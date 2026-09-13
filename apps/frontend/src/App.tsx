@@ -1,5 +1,6 @@
 import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 import { Layout } from './components/Layout.js';
+import { Dashboard } from './pages/Dashboard.js';
 import { TestCaseForm } from './pages/TestCaseForm.js';
 import { TestCaseList } from './pages/TestCaseList.js';
 import { TestRunDetailPage } from './pages/TestRunDetail.js';
@@ -13,7 +14,8 @@ export default function App() {
     <Router>
       <Routes>
         <Route element={<Layout />}>
-          <Route index element={<Navigate to="/test-cases" replace />} />
+          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/test-cases" element={<TestCaseList />} />
           <Route path="/test-cases/new" element={<TestCaseForm />} />
           <Route path="/test-cases/:id" element={<TestCaseForm />} />
@@ -22,7 +24,7 @@ export default function App() {
           <Route path="/test-runs" element={<TestRunList />} />
           <Route path="/test-runs/new" element={<TestRunNew />} />
           <Route path="/test-runs/:id" element={<TestRunDetailPage />} />
-          <Route path="*" element={<Navigate to="/test-cases" replace />} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>
       </Routes>
     </Router>

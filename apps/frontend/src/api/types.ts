@@ -119,3 +119,27 @@ export interface TestCaseFilters {
   tag?: string;
   isAutomatable?: boolean;
 }
+
+export interface Stats {
+  totals: {
+    cases: number;
+    automatableCases: number;
+    manualCases: number;
+    suites: number;
+    runs: number;
+    activeRuns: number;
+  };
+  passRate: number | null;
+  resultTotals: { pass: number; fail: number };
+  priority: Record<Priority, number>;
+  execution: { MANUAL: number; AUTOMATED: number };
+  recentRuns: {
+    id: string;
+    name: string;
+    status: RunStatus;
+    startedAt: string;
+    suite: { id: string; name: string };
+    counts: ResultCounts;
+    total: number;
+  }[];
+}

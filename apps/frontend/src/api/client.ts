@@ -1,5 +1,6 @@
 import type {
   ResultStatus,
+  Stats,
   TestCase,
   TestCaseFilters,
   TestCaseInput,
@@ -83,6 +84,8 @@ export const resolveUploadUrl = (url: string | null): string | null =>
   url ? `${BASE}${url}` : null;
 
 export const api = {
+  getStats: () => request<Stats>('/stats'),
+
   listTestCases: (filters: TestCaseFilters = {}) =>
     request<TestCase[]>(`/test-cases${toQuery(filters)}`),
 

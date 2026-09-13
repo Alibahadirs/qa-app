@@ -15,6 +15,9 @@ export function Layout() {
             <p className="text-xs text-slate-500">Test Yönetim Uygulaması</p>
           </div>
           <nav className="flex gap-1">
+            <NavLink to="/dashboard" className={linkClass}>
+              Genel Bakış
+            </NavLink>
             <NavLink to="/test-cases" className={linkClass}>
               Test Case'ler
             </NavLink>

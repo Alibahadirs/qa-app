@@ -52,6 +52,7 @@ Frontend'deki `/api/*` istekleri Vite dev sunucusu tarafından backend'e proxy'l
 | Metot | Yol | Açıklama |
 | --- | --- | --- |
 | GET | `/health` | Sağlık kontrolü |
+| GET | `/stats` | Dashboard toplamları: sayılar, başarı oranı, öncelik ve çalıştırma türü dağılımı, son 5 run |
 | GET | `/test-cases` | Liste — `?priority=` `?tag=` `?isAutomatable=` `?q=` |
 | POST | `/test-cases` | Oluştur |
 | GET | `/test-cases/:id` | Tek kayıt |
@@ -90,6 +91,7 @@ denemeleri `409` döner.
 
 | Route | İçerik |
 | --- | --- |
+| `/dashboard` | Genel bakış: sayaçlar, başarı oranı, dağılım grafikleri, son run'lar |
 | `/test-cases` | Liste + filtreler (arama, öncelik, etiket, otomasyon) |
 | `/test-cases/new` · `/test-cases/:id` | Oluşturma / düzenleme formu |
 | `/test-suites` | Suite listesi, satır içi oluşturma |
@@ -113,7 +115,8 @@ denemeleri `409` döner.
 qa-app/
 ├── apps/
 │   ├── backend/        # Express API + Prisma
-│   └── frontend/       # React + Vite arayüz
+│   ├── frontend/       # React + Vite arayüz
+│   └── e2e/            # Playwright spec'leri (otomatize case'ler)
 ├── CLAUDE.md           # Geliştirme promptu ve faz planı
 └── pnpm-workspace.yaml
 ```
@@ -125,7 +128,7 @@ qa-app/
 - [x] Faz 2 — Frontend: test case / suite yönetimi
 - [x] Faz 3 — Manuel test çalıştırma
 - [x] Faz 4 — Playwright otomasyon entegrasyonu
-- [ ] Faz 5 — Raporlama / dashboard
+- [x] Faz 5 — Raporlama / dashboard
 - [ ] Faz 6 — Cilalama (opsiyonel)
 
 ## Otomasyon (Faz 4)
