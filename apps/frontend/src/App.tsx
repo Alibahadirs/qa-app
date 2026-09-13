@@ -1,18 +1,24 @@
+import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
+import { Layout } from './components/Layout.js';
+import { TestCaseForm } from './pages/TestCaseForm.js';
+import { TestCaseList } from './pages/TestCaseList.js';
+import { TestSuiteDetailPage } from './pages/TestSuiteDetail.js';
+import { TestSuiteList } from './pages/TestSuiteList.js';
+
 export default function App() {
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto max-w-5xl px-6 py-4">
-          <h1 className="text-lg font-semibold">QA App</h1>
-          <p className="text-sm text-slate-500">Test Yönetim Uygulaması</p>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-5xl px-6 py-10">
-        <p className="text-slate-600">
-          İskelet hazır. Test case ve suite yönetimi Faz 2'de eklenecek.
-        </p>
-      </main>
-    </div>
+    <Router>
+      <Routes>
+        <Route element={<Layout />}>
+          <Route index element={<Navigate to="/test-cases" replace />} />
+          <Route path="/test-cases" element={<TestCaseList />} />
+          <Route path="/test-cases/new" element={<TestCaseForm />} />
+          <Route path="/test-cases/:id" element={<TestCaseForm />} />
+          <Route path="/test-suites" element={<TestSuiteList />} />
+          <Route path="/test-suites/:id" element={<TestSuiteDetailPage />} />
+          <Route path="*" element={<Navigate to="/test-cases" replace />} />
+        </Route>
+      </Routes>
+    </Router>
   );
 }

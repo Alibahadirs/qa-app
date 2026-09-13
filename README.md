@@ -69,6 +69,15 @@ Hata formatı: `400` doğrulama (`details[]` ile), `404` bulunamadı, `500` sunu
 
 `TestRun` ve `TestResult` modelleri şemada tanımlı; endpoint'leri Faz 3'te eklenecek.
 
+## Ekranlar
+
+| Route | İçerik |
+| --- | --- |
+| `/test-cases` | Liste + filtreler (arama, öncelik, etiket, otomasyon) |
+| `/test-cases/new` · `/test-cases/:id` | Oluşturma / düzenleme formu |
+| `/test-suites` | Suite listesi, satır içi oluşturma |
+| `/test-suites/:id` | Suite düzenleme, case ekle / çıkar / sırala |
+
 ## Script'ler
 
 | Komut | Açıklama |
@@ -93,7 +102,7 @@ qa-app/
 
 - [x] Faz 0 — İskelet kurulumu
 - [x] Faz 1 — Veri modeli ve backend API
-- [ ] Faz 2 — Frontend: test case / suite yönetimi
+- [x] Faz 2 — Frontend: test case / suite yönetimi
 - [ ] Faz 3 — Manuel test çalıştırma
 - [ ] Faz 4 — Playwright otomasyon entegrasyonu
 - [ ] Faz 5 — Raporlama / dashboard
