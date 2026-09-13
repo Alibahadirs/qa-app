@@ -1,0 +1,95 @@
+# Test Yönetim Uygulaması — Claude Code Geliştirme Promptu
+
+## 1. Proje Vizyonu
+
+Hem manuel test süreçlerini (test case yazma, test planı/suite oluşturma, manuel çalıştırma ve sonuç kaydetme) kolaylaştıran, hem de bu test case'lerin bir kısmını Playwright ile otomatize edilebilir hale getiren bir web uygulaması geliştiriyoruz.
+
+Temel kullanıcı akışı:
+
+1. Kullanıcı test case'leri yazar (başlık, adımlar, beklenen sonuç, öncelik, etiketler).
+2. Test case'leri test suite/plan'lara gruplar.
+3. Bir "test run" başlatır, her case için manuel olarak Pass/Fail/Blocked/Skipped işaretler, ekran görüntüsü/not ekler.
+4. Uygun case'leri "otomatize edilebilir" olarak işaretleyip Playwright script'ine bağlar.
+5. Otomatize edilmiş case'leri uygulama üzerinden tetikleyip sonucu (Playwright raporu) aynı dashboard'da görür.
+6. Manuel ve otomatik sonuçları birlikte gösteren bir raporlama/dashboard ekranı olur.
+
+## 2. Teknoloji Yığını (Karar Verildi)
+
+- **Frontend:** React + TypeScript + Vite, UI için Tailwind CSS
+- **Backend:** Node.js + TypeScript + Express (veya Fastify)
+- **Veritabanı:** SQLite (geliştirme) + Prisma ORM (ileride Postgres'e geçiş kolay olsun diye)
+- **Otomasyon entegrasyonu:** Playwright (Test Runner API / CLI ile backend'den tetiklenecek, JSON raporu parse edilip DB'ye yazılacak)
+- **Paket yöneticisi:** pnpm
+
+Tek dil (TypeScript) hem frontend hem backend'de kullanılacak — bu, Claude Code'un context switch yapmadan çalışmasını sağlar ve token maliyetini düşürür.
+
+**Önemli kısıtlama:** Uygulamanın kendisi (production'da çalışan hâli) hiçbir şekilde bir LLM/AI API'sine (Claude API dahil) istek atmayacak. "AI destekli test önerisi", "otomatik test case üretimi" gibi özellikler önerme veya ekleme — bunlar gerçek kullanım sırasında token/API maliyeti doğurur ve bu projenin kapsamı dışında. Token maliyeti sadece geliştirme sırasında Claude Code'u kullanmaktan kaynaklanır, bittikten sonra sıfır olmalı.
+
+## 3. Token Verimliliği Kuralları (Zorunlu — Her Fazda Uygula)
+
+- Kod yazmadan önce kısa bir plan sun, onay bekle. Onaysız dosya oluşturma/düzenleme yapma.
+- Sadece ilgili dosyaları oku; tüm projeyi taramak yerine hedefli grep/glob kullan.
+- Her faz kendi başına bağımsız bir iş birimi — bir faz bitince özetle ve dur, otomatik olarak sıradaki faza geçme.
+- Uzun açıklama yazma; değişiklikleri kısa madde işaretleriyle özetle.
+- Aynı dosyada yapılacak birden fazla küçük değişikliği tek seferde topla, tek tek deneme-yanılma yapma.
+- Yeni bir pakete ihtiyaç olursa önce sor, sürüm tahmini yapıp doğrudan kurma.
+- Test/örnek veri üretirken minimal ve gerçekçi tut, gereksiz büyük mock veri seti oluşturma.
+- Karmaşık çok dosyalı araştırma gerekiyorsa (örn. "tüm proje yapısını analiz et") sub-agent/Task kullan, ana context'i şişirme.
+
+## 4. Faz Planı (Her Fazı Ayrı Session'da Çalıştır, Aralarında `/clear` Kullan)
+
+### Faz 0 — İskelet Kurulumu
+
+- pnpm monorepo yapısı (`apps/frontend`, `apps/backend`, `packages/shared` gibi) veya basit iki klasörlü yapı.
+- Backend: Express + TypeScript + Prisma kurulumu, boş sağlık kontrolü endpoint'i (`GET /health`).
+- Frontend: Vite + React + TypeScript + Tailwind kurulumu, boş ana sayfa.
+- `.gitignore`, `README.md`, temel `package.json` script'leri (`dev`, `build`, `test`).
+- **Çıktı:** Çalışan boş bir iskelet, backend ve frontend ayrı ayrı `pnpm dev` ile ayağa kalkabiliyor.
+
+### Faz 1 — Veri Modeli ve Backend API (Test Case & Suite CRUD)
+
+- Prisma şeması: `TestCase` (id, başlık, adımlar[], beklenen sonuç, öncelik, etiketler, otomatize edilebilir mi, playwright script yolu), `TestSuite` (id, ad, açıklama, case'ler), `TestRun`, `TestResult` (case, run, status, not, ekran görüntüsü linki, tarih).
+- CRUD endpoint'leri: `/test-cases`, `/test-suites`.
+- Basit input validasyonu (zod).
+- **Çıktı:** Postman/curl ile test edilebilir çalışan API.
+
+### Faz 2 — Frontend: Test Case ve Suite Yönetimi
+
+- Test case listesi, oluşturma/düzenleme formu.
+- Suite'e case ekleme/çıkarma arayüzü.
+- Basit filtreleme (öncelik, etiket, otomatize edilebilir mi).
+- **Çıktı:** Kullanıcı tarayıcıdan test case ve suite'leri yönetebiliyor.
+
+### Faz 3 — Manuel Test Çalıştırma (Test Run)
+
+- `TestRun` başlatma: bir suite seçilir, case'ler sıraya dizilir.
+- Her case için Pass/Fail/Blocked/Skipped işaretleme ekranı, not ve ekran görüntüsü (dosya upload) alanı.
+- Run tamamlandığında özet ekranı (kaç pass/fail vs.).
+- **Çıktı:** Uçtan uca manuel test çalıştırma akışı çalışıyor.
+
+### Faz 4 — Playwright Otomasyon Entegrasyonu
+
+- "Otomatize edilebilir" işaretli case'lere bir Playwright test dosyası (`.spec.ts`) bağlama alanı.
+- Backend'den `npx playwright test <dosya> --reporter=json` tetikleme (child_process), sonucu parse edip `TestResult`'a yazma.
+- Frontend'de "Otomatik Çalıştır" butonu, sonucu canlı/yakın zamanlı gösterme.
+- **Çıktı:** Bir case'i tek tıkla otomatik çalıştırıp sonucu uygulamada görebiliyorsun.
+
+### Faz 5 — Raporlama / Dashboard
+
+- Genel dashboard: toplam case sayısı, son run'ların pass/fail oranı, manuel vs otomatik dağılımı (basit grafik).
+- Run geçmişi ve detay sayfası.
+- **Çıktı:** Tek bakışta test sağlığını gösteren dashboard.
+
+### Faz 6 — Cilalama (Opsiyonel, İhtiyaca Göre)
+
+- Kimlik doğrulama (tek kullanıcı/takım için basit auth).
+- Dışa aktarma (CSV/PDF rapor).
+- CI entegrasyonu (GitHub Actions'ta otomatik case'leri çalıştırma).
+
+## 5. Kullanım Talimatı
+
+1. Bu dosya proje kökünde `CLAUDE.md` olarak durur; Claude Code her session'da otomatik okur.
+2. Yeni bir session'da: "CLAUDE.md'yi oku. Faz 0'ı uygula. Önce kısa bir plan sun, onaylayınca uygula."
+3. Faz bitince özeti kontrol et, `/clear` çalıştır.
+4. Sıradaki session'da: "CLAUDE.md'yi oku. Faz 1'i uygula." şeklinde devam et.
+5. Bir faz çok büyük gelirse ("Faz 3'ü A ve B alt adımına böl, önce A'yı yap" gibi) daha küçük parçalara ayır.
