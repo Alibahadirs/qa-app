@@ -1,0 +1,89 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: file:./ci.db
+      PORT: '3001'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Bağımlılıkları kur
+        run: pnpm install --frozen-lockfile
+
+      - name: Prisma client üret
+        run: pnpm --filter @qa-app/backend db:generate
+
+      - name: Tip kontrolü
+        run: pnpm typecheck
+
+      - name: Derle
+        run: pnpm build
+
+  e2e:
+    runs-on: ubuntu-latest
+    needs: build
+    env:
+      DATABASE_URL: file:./ci.db
+      PORT: '3001'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Bağımlılıkları kur
+        run: pnpm install --frozen-lockfile
+
+      - name: Veritabanını hazırla
+        run: |
+          pnpm --filter @qa-app/backend db:generate
+          pnpm --filter @qa-app/backend db:push
+          pnpm --filter @qa-app/backend db:seed
+
+      - name: Playwright tarayıcısını kur
+        run: pnpm --filter @qa-app/e2e exec playwright install --with-deps chromium
+
+      - name: Sunucuları başlat
+        run: |
+          pnpm dev:backend & echo $! > /tmp/be.pid
+          pnpm dev:frontend & echo $! > /tmp/fe.pid
+          npx --yes wait-on http://localhost:3001/health http://localhost:5173 --timeout 120000
+
+      - name: Otomatize test case'leri çalıştır
+        run: pnpm --filter @qa-app/e2e test -- --grep-invert "@demo"
+
+      - name: Sunucuları durdur
+        if: always()
+        run: kill $(cat /tmp/be.pid) $(cat /tmp/fe.pid) || true
+
+      - name: Playwright raporunu yükle
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: apps/e2e/playwright-report/
+          retention-days: 7

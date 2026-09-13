@@ -1,9 +1,11 @@
 import './env.js';
 import cors from 'cors';
 import express from 'express';
+import { requireAuth } from './lib/auth.js';
 import { errorHandler } from './lib/errors.js';
 import { UPLOAD_DIR, UPLOAD_ROUTE } from './lib/uploads.js';
 import { testCasesRouter } from './routes/testCases.js';
+import { authRouter } from './routes/auth.js';
 import { statsRouter } from './routes/stats.js';
 import { testRunsRouter } from './routes/testRuns.js';
 import { testSuitesRouter } from './routes/testSuites.js';
@@ -17,6 +19,9 @@ app.use(express.json());
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+app.use('/auth', authRouter);
+app.use(requireAuth);
 
 app.use(UPLOAD_ROUTE, express.static(UPLOAD_DIR, { index: false, maxAge: '1h' }));
 

@@ -1,5 +1,9 @@
+import { useCallback, useEffect, useState } from 'react';
 import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
+import { api, type AuthState } from './api/client.js';
 import { Layout } from './components/Layout.js';
+import { Alert, Spinner } from './components/ui.js';
+import { Login } from './pages/Login.js';
 import { Dashboard } from './pages/Dashboard.js';
 import { TestCaseForm } from './pages/TestCaseForm.js';
 import { TestCaseList } from './pages/TestCaseList.js';
@@ -10,10 +14,30 @@ import { TestSuiteDetailPage } from './pages/TestSuiteDetail.js';
 import { TestSuiteList } from './pages/TestSuiteList.js';
 
 export default function App() {
+  const [auth, setAuth] = useState<AuthState | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const refresh = useCallback(() => {
+    api
+      .getAuthState()
+      .then(setAuth)
+      .catch((e: unknown) => setError(e instanceof Error ? e.message : 'Sunucuya ulaşılamadı'));
+  }, []);
+
+  useEffect(refresh, [refresh]);
+
+  const logout = useCallback(() => {
+    void api.logout().then(setAuth);
+  }, []);
+
+  if (error) return <div className="p-6"><Alert>{error}</Alert></div>;
+  if (!auth) return <Spinner />;
+  if (auth.required && !auth.authenticated) return <Login onSuccess={refresh} />;
+
   return (
     <Router>
       <Routes>
-        <Route element={<Layout />}>
+        <Route element={<Layout onLogout={auth.required ? logout : undefined} />}>
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/test-cases" element={<TestCaseList />} />

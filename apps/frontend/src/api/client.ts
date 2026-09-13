@@ -83,7 +83,25 @@ function toQuery(filters: TestCaseFilters): string {
 export const resolveUploadUrl = (url: string | null): string | null =>
   url ? `${BASE}${url}` : null;
 
+export interface AuthState {
+  required: boolean;
+  authenticated: boolean;
+}
+
+/** Dosya indirme bağlantıları (tarayıcı doğrudan açar). */
+export const exportUrl = {
+  testCases: () => `${BASE}/test-cases/export.csv`,
+  run: (runId: string) => `${BASE}/test-runs/${runId}/export.csv`,
+};
+
 export const api = {
+  getAuthState: () => request<AuthState>('/auth/me'),
+
+  login: (password: string) =>
+    request<AuthState>('/auth/login', { method: 'POST', body: JSON.stringify({ password }) }),
+
+  logout: () => request<AuthState>('/auth/logout', { method: 'POST' }),
+
   getStats: () => request<Stats>('/stats'),
 
   listTestCases: (filters: TestCaseFilters = {}) =>

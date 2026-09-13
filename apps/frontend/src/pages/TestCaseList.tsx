@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { api } from '../api/client.js';
+import { api, exportUrl } from '../api/client.js';
 import { PRIORITIES, PRIORITY_LABELS, type Priority, type TestCase } from '../api/types.js';
 import {
   Alert,
@@ -62,9 +62,14 @@ export function TestCaseList() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-xl font-semibold">Test Case'ler</h2>
-        <Link to="/test-cases/new" className={primaryButton} data-testid="new-case">
-          + Yeni Test Case
-        </Link>
+        <div className="flex gap-2">
+          <a href={exportUrl.testCases()} className={secondaryButton} data-testid="export-cases">
+            CSV indir
+          </a>
+          <Link to="/test-cases/new" className={primaryButton} data-testid="new-case">
+            + Yeni Test Case
+          </Link>
+        </div>
       </div>
 
       <div className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-4">

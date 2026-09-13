@@ -1,6 +1,6 @@
 import { type ChangeEvent, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { api, resolveUploadUrl } from '../api/client.js';
+import { api, exportUrl, resolveUploadUrl } from '../api/client.js';
 import {
   MARKABLE_STATUSES,
   RESULT_LABELS,
@@ -145,9 +145,22 @@ export function TestRunDetailPage() {
             {duration ? ` · Süre ${duration}` : ''}
           </p>
         </div>
-        <Link to="/test-runs" className={secondaryButton}>
-          ← Run listesi
-        </Link>
+        <div className="flex gap-2 print:hidden">
+          <a href={exportUrl.run(id)} className={secondaryButton} data-testid="export-run">
+            CSV indir
+          </a>
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className={secondaryButton}
+            data-testid="print-run"
+          >
+            PDF / Yazdır
+          </button>
+          <Link to="/test-runs" className={secondaryButton}>
+            ← Run listesi
+          </Link>
+        </div>
       </div>
 
       {actionError && <Alert>{actionError}</Alert>}
@@ -157,7 +170,7 @@ export function TestRunDetailPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <CountsLine counts={run.counts} total={run.total} />
           {editable ? (
-            <div className="flex gap-2">
+            <div className="flex gap-2 print:hidden">
               <button
                 type="button"
                 disabled={busy}
@@ -197,8 +210,40 @@ export function TestRunDetailPage() {
         )}
       </section>
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,18rem)_1fr]">
-        <nav className="rounded-lg border border-slate-200 bg-white p-2" aria-label="Case listesi">
+      {/* Yazdırma çıktısı: ekranda tek case gösterilir, kağıtta tüm sonuçlar. */}
+      <section className="hidden print:block">
+        <h3 className="mb-2 text-sm font-semibold">Sonuçlar</h3>
+        <table className="w-full border-collapse text-xs">
+          <thead>
+            <tr className="border-b border-slate-300 text-left">
+              <th className="py-1 pr-2">#</th>
+              <th className="py-1 pr-2">Test case</th>
+              <th className="py-1 pr-2">Sonuç</th>
+              <th className="py-1 pr-2">Tür</th>
+              <th className="py-1">Not</th>
+            </tr>
+          </thead>
+          <tbody>
+            {run.results.map((r, i) => (
+              <tr key={r.id} className="border-b border-slate-200 align-top">
+                <td className="py-1 pr-2">{i + 1}</td>
+                <td className="py-1 pr-2">{r.testCase.title}</td>
+                <td className="py-1 pr-2">{RESULT_LABELS[r.status]}</td>
+                <td className="py-1 pr-2">
+                  {r.executionType === 'AUTOMATED' ? 'Otomatik' : 'Manuel'}
+                </td>
+                <td className="py-1 whitespace-pre-wrap">{r.notes ?? ''}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,18rem)_1fr] print:hidden">
+        <nav
+          className="rounded-lg border border-slate-200 bg-white p-2 print:hidden"
+          aria-label="Case listesi"
+        >
           <ol data-testid="run-case-list">
             {run.results.map((r, index) => (
               <li key={r.id}>

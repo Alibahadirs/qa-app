@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../db.js';
 import { asyncHandler, notFound } from '../lib/errors.js';
+import { csvFilename, toCsv } from '../lib/csv.js';
 import { parseStringArray, serializeStringArray } from '../lib/json.js';
 import {
   createTestCaseSchema,
@@ -38,6 +39,30 @@ testCasesRouter.get(
     const filtered = tag ? rows.filter((r) => parseStringArray(r.tags).includes(tag)) : rows;
 
     res.json(filtered.map(toDto));
+  }),
+);
+
+testCasesRouter.get(
+  '/export.csv',
+  asyncHandler(async (_req, res) => {
+    const rows = await prisma.testCase.findMany({ orderBy: { createdAt: 'desc' } });
+    const csv = toCsv(
+      ['Başlık', 'Açıklama', 'Adımlar', 'Beklenen Sonuç', 'Öncelik', 'Etiketler', 'Otomatize', 'Script', 'Oluşturma'],
+      rows.map((c) => [
+        c.title,
+        c.description,
+        parseStringArray(c.steps).map((s, i) => `${i + 1}. ${s}`).join('\n'),
+        c.expectedResult,
+        c.priority,
+        parseStringArray(c.tags).join(', '),
+        c.isAutomatable ? 'Evet' : 'Hayır',
+        c.playwrightScriptPath,
+        c.createdAt.toISOString(),
+      ]),
+    );
+    res.type('text/csv; charset=utf-8')
+      .setHeader('content-disposition', `attachment; filename="${csvFilename('test-cases')}"`);
+    res.send(csv);
   }),
 );
 

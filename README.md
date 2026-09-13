@@ -52,6 +52,9 @@ Frontend'deki `/api/*` istekleri Vite dev sunucusu tarafından backend'e proxy'l
 | Metot | Yol | Açıklama |
 | --- | --- | --- |
 | GET | `/health` | Sağlık kontrolü |
+| POST | `/auth/login` · `/auth/logout` · GET `/auth/me` | Takım parolası ile oturum (auth açıksa) |
+| GET | `/test-cases/export.csv` | Tüm test case'ler, CSV |
+| GET | `/test-runs/:id/export.csv` | Run sonuçları, CSV |
 | GET | `/stats` | Dashboard toplamları: sayılar, başarı oranı, öncelik ve çalıştırma türü dağılımı, son 5 run |
 | GET | `/test-cases` | Liste — `?priority=` `?tag=` `?isAutomatable=` `?q=` |
 | POST | `/test-cases` | Oluştur |
@@ -129,7 +132,7 @@ qa-app/
 - [x] Faz 3 — Manuel test çalıştırma
 - [x] Faz 4 — Playwright otomasyon entegrasyonu
 - [x] Faz 5 — Raporlama / dashboard
-- [ ] Faz 6 — Cilalama (opsiyonel)
+- [x] Faz 6 — Auth, CSV/PDF dışa aktarma, CI
 
 ## Otomasyon (Faz 4)
 
@@ -143,3 +146,37 @@ Bir test case'i `isAutomatable` işaretleyip `playwrightScriptPath` alanına
 - Çalıştırma zaman aşımı 120 sn; aynı sonuç için eşzamanlı ikinci istek `409` alır.
 - Tarayıcıların önceden kurulu olduğu ortamlarda `E2E_CHROMIUM_PATH` ile
   Chromium yolu verilebilir (boşsa Playwright kendi indirdiğini kullanır).
+
+## Kimlik doğrulama (Faz 6)
+
+`apps/backend/.env` içinde `AUTH_PASSWORD` **doluysa** uygulama takım parolası
+ister; **boşsa** kimlik doğrulama tamamen kapalıdır (yerel geliştirme için).
+
+```bash
+AUTH_PASSWORD=cok-gizli-bir-parola
+SESSION_SECRET=$(openssl rand -hex 32)   # üretimde mutlaka tanımlayın
+```
+
+Parola doğrulandığında HMAC ile imzalanmış, `httpOnly` bir oturum cookie'si
+verilir (7 gün). `/health` ve `/auth/*` dışındaki tüm uçlar oturum ister.
+Tek paylaşılan parola modelidir — kullanıcı bazlı yetkilendirme yoktur.
+
+## Dışa aktarma
+
+- **CSV:** Test case listesinde ve run detayında "CSV indir". Dosyalar UTF-8 BOM
+  ve `sep=;` satırıyla üretilir, böylece Excel Türkçe yerel ayarında kolonları
+  doğru ayırır ve karakterleri bozmaz.
+- **PDF:** Run detayındaki "PDF / Yazdır" tarayıcının yazdırma penceresini açar;
+  yazdırma görünümünde gezinme ve butonlar gizlenir, tüm sonuçlar tek tabloda
+  listelenir. Ayrı bir PDF kütüphanesi eklenmedi — tarayıcı çıktısı Türkçe
+  fontlarda daha güvenilir ve bağımlılık maliyeti yok.
+
+## CI
+
+`.github/workflows/ci.yml` iki iş çalıştırır:
+
+1. **build** — `pnpm install`, Prisma client üretimi, `pnpm typecheck`, `pnpm build`
+2. **e2e** — veritabanını hazırlar, sunucuları ayağa kaldırır, `apps/e2e`
+   spec'lerini çalıştırır; başarısızlıkta Playwright raporunu artifact olarak yükler
+
+`@demo` etiketli spec (kasıtlı başarısız örnek) CI'da `--grep-invert` ile hariç tutulur.

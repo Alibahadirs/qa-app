@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { type Request, type Response, Router } from 'express';
 import { prisma } from '../db.js';
 import { HttpError, asyncHandler, notFound } from '../lib/errors.js';
+import { csvFilename, toCsv } from '../lib/csv.js';
 import { parseStringArray } from '../lib/json.js';
 import { resolveScriptPath, runPlaywrightSpec } from '../lib/playwright.js';
 import { UPLOAD_DIR, UPLOAD_ROUTE, screenshotUpload, toUploadError } from '../lib/uploads.js';
@@ -124,6 +125,30 @@ testRunsRouter.post(
     });
 
     res.status(201).json(await loadRun(created.id));
+  }),
+);
+
+testRunsRouter.get(
+  '/:id/export.csv',
+  asyncHandler(async (req, res) => {
+    const run = await loadRun(req.params.id as string);
+    const csv = toCsv(
+      ['#', 'Test Case', 'Öncelik', 'Sonuç', 'Tür', 'Süre (sn)', 'Not', 'Ekran Görüntüsü', 'Zaman'],
+      run.results.map((r, i) => [
+        i + 1,
+        r.testCase.title,
+        r.testCase.priority,
+        r.status,
+        r.executionType,
+        r.durationMs === null ? '' : (r.durationMs / 1000).toFixed(1),
+        r.notes,
+        r.screenshotUrl,
+        r.executedAt.toISOString(),
+      ]),
+    );
+    res.type('text/csv; charset=utf-8')
+      .setHeader('content-disposition', `attachment; filename="${csvFilename(run.name)}"`);
+    res.send(csv);
   }),
 );
 
