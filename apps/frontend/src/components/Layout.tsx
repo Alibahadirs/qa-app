@@ -21,6 +21,9 @@ export function Layout() {
             <NavLink to="/test-suites" className={linkClass}>
               Suite'ler
             </NavLink>
+            <NavLink to="/test-runs" className={linkClass}>
+              Run'lar
+            </NavLink>
           </nav>
         </div>
       </header>

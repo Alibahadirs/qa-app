@@ -59,6 +59,60 @@ export interface TestSuiteDetail {
   cases: TestSuiteCase[];
 }
 
+export const RESULT_STATUSES = ['PASS', 'FAIL', 'BLOCKED', 'SKIPPED', 'NOT_RUN'] as const;
+export type ResultStatus = (typeof RESULT_STATUSES)[number];
+
+/** Çalıştırma ekranında kullanıcının işaretleyebileceği durumlar. */
+export const MARKABLE_STATUSES = ['PASS', 'FAIL', 'BLOCKED', 'SKIPPED'] as const;
+
+export const RESULT_LABELS: Record<ResultStatus, string> = {
+  PASS: 'Geçti',
+  FAIL: 'Kaldı',
+  BLOCKED: 'Bloke',
+  SKIPPED: 'Atlandı',
+  NOT_RUN: 'Bekliyor',
+};
+
+export type RunStatus = 'IN_PROGRESS' | 'COMPLETED' | 'ABORTED';
+
+export const RUN_STATUS_LABELS: Record<RunStatus, string> = {
+  IN_PROGRESS: 'Devam ediyor',
+  COMPLETED: 'Tamamlandı',
+  ABORTED: 'İptal edildi',
+};
+
+export type ResultCounts = Record<ResultStatus, number>;
+
+export interface TestRunResult {
+  id: string;
+  order: number;
+  status: ResultStatus;
+  notes: string | null;
+  screenshotUrl: string | null;
+  executionType: 'MANUAL' | 'AUTOMATED';
+  durationMs: number | null;
+  executedAt: string;
+  testCase: TestCase;
+}
+
+export interface TestRunSummary {
+  id: string;
+  name: string;
+  suiteId: string;
+  suite: { id: string; name: string };
+  status: RunStatus;
+  startedAt: string;
+  completedAt: string | null;
+  counts: ResultCounts;
+  total: number;
+}
+
+export interface TestRunDetail extends Omit<TestRunSummary, 'counts' | 'total'> {
+  counts: ResultCounts;
+  total: number;
+  results: TestRunResult[];
+}
+
 export interface TestCaseFilters {
   q?: string;
   priority?: Priority;

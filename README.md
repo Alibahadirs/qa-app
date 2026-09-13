@@ -92,6 +92,9 @@ denemeleri `409` döner.
 | `/test-cases/new` · `/test-cases/:id` | Oluşturma / düzenleme formu |
 | `/test-suites` | Suite listesi, satır içi oluşturma |
 | `/test-suites/:id` | Suite düzenleme, case ekle / çıkar / sırala |
+| `/test-runs` | Run listesi, ilerleme çubuğu ve durum sayaçları |
+| `/test-runs/new` | Suite seçip run başlatma |
+| `/test-runs/:id` | Çalıştırıcı: adımlar, Pass/Fail/Blocked/Skipped, not, ekran görüntüsü — kapandıktan sonra özet |
 
 ## Script'ler
 
@@ -118,7 +121,7 @@ qa-app/
 - [x] Faz 0 — İskelet kurulumu
 - [x] Faz 1 — Veri modeli ve backend API
 - [x] Faz 2 — Frontend: test case / suite yönetimi
-- [ ] Faz 3 — Manuel test çalıştırma (3A backend ✓, 3B arayüz bekliyor)
+- [x] Faz 3 — Manuel test çalıştırma
 - [ ] Faz 4 — Playwright otomasyon entegrasyonu
 - [ ] Faz 5 — Raporlama / dashboard
 - [ ] Faz 6 — Cilalama (opsiyonel)

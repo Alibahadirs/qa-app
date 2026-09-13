@@ -1,7 +1,10 @@
 import type {
+  ResultStatus,
   TestCase,
   TestCaseFilters,
   TestCaseInput,
+  TestRunDetail,
+  TestRunSummary,
   TestSuiteDetail,
   TestSuiteSummary,
 } from './types.js';
@@ -26,10 +29,12 @@ export class ApiError extends Error {
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let res: Response;
+  const isForm = init?.body instanceof FormData;
   try {
     res = await fetch(`${BASE}${path}`, {
       ...init,
-      headers: init?.body ? { 'content-type': 'application/json' } : undefined,
+      // FormData'da boundary'yi tarayıcı belirler; content-type elle set edilmemeli.
+      headers: init?.body && !isForm ? { 'content-type': 'application/json' } : undefined,
     });
   } catch {
     throw new ApiError(0, 'Sunucuya ulaşılamadı. Backend çalışıyor mu?');
@@ -69,6 +74,13 @@ function toQuery(filters: TestCaseFilters): string {
   const s = params.toString();
   return s ? `?${s}` : '';
 }
+
+/**
+ * Backend `/uploads/<dosya>` döner; dev sunucusunda backend'e yalnızca `/api/*`
+ * proxy'lendiği için ön ek eklenir.
+ */
+export const resolveUploadUrl = (url: string | null): string | null =>
+  url ? `${BASE}${url}` : null;
 
 export const api = {
   listTestCases: (filters: TestCaseFilters = {}) =>
@@ -112,5 +124,44 @@ export const api = {
     request<TestSuiteDetail>(`/test-suites/${id}/cases/order`, {
       method: 'PUT',
       body: JSON.stringify({ caseIds }),
+    }),
+
+  listTestRuns: () => request<TestRunSummary[]>('/test-runs'),
+
+  getTestRun: (id: string) => request<TestRunDetail>(`/test-runs/${id}`),
+
+  createTestRun: (input: { suiteId: string; name?: string }) =>
+    request<TestRunDetail>('/test-runs', { method: 'POST', body: JSON.stringify(input) }),
+
+  finishTestRun: (id: string, status: 'COMPLETED' | 'ABORTED') =>
+    request<TestRunDetail>(`/test-runs/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    }),
+
+  deleteTestRun: (id: string) => request<void>(`/test-runs/${id}`, { method: 'DELETE' }),
+
+  updateResult: (
+    runId: string,
+    caseId: string,
+    input: { status?: ResultStatus; notes?: string | null },
+  ) =>
+    request<TestRunDetail>(`/test-runs/${runId}/results/${caseId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(input),
+    }),
+
+  uploadScreenshot: (runId: string, caseId: string, file: File) => {
+    const form = new FormData();
+    form.append('screenshot', file);
+    return request<TestRunDetail>(`/test-runs/${runId}/results/${caseId}/screenshot`, {
+      method: 'POST',
+      body: form,
+    });
+  },
+
+  deleteScreenshot: (runId: string, caseId: string) =>
+    request<TestRunDetail>(`/test-runs/${runId}/results/${caseId}/screenshot`, {
+      method: 'DELETE',
     }),
 };
