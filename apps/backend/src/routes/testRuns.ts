@@ -4,6 +4,7 @@ import { type Request, type Response, Router } from 'express';
 import { prisma } from '../db.js';
 import { HttpError, asyncHandler, notFound } from '../lib/errors.js';
 import { parseStringArray } from '../lib/json.js';
+import { resolveScriptPath, runPlaywrightSpec } from '../lib/playwright.js';
 import { UPLOAD_DIR, UPLOAD_ROUTE, screenshotUpload, toUploadError } from '../lib/uploads.js';
 import {
   createTestRunSchema,
@@ -192,6 +193,56 @@ testRunsRouter.patch(
         executedAt: new Date(),
       },
     });
+
+    res.json(await loadRun(id));
+  }),
+);
+
+/** Aynı sonucu iki kez paralel tetiklemeyi engelleyen basit kilit. */
+const running = new Set<string>();
+
+testRunsRouter.post(
+  '/:id/results/:caseId/run-automated',
+  asyncHandler(async (req, res) => {
+    const id = req.params.id as string;
+    const caseId = req.params.caseId as string;
+    await assertRunEditable(id);
+
+    const result = await prisma.testResult.findUnique({
+      where: { runId_caseId: { runId: id, caseId } },
+      select: { testCase: { select: { isAutomatable: true, playwrightScriptPath: true } } },
+    });
+    if (!result) throw new HttpError(404, `Run ${id} içinde case bulunamadı: ${caseId}`);
+
+    const { isAutomatable, playwrightScriptPath } = result.testCase;
+    if (!isAutomatable) {
+      throw new HttpError(400, 'Bu test case otomatize edilebilir olarak işaretlenmemiş.');
+    }
+    if (!playwrightScriptPath) {
+      throw new HttpError(400, 'Bu test case için Playwright script yolu tanımlı değil.');
+    }
+
+    const scriptPath = resolveScriptPath(playwrightScriptPath);
+
+    const key = `${id}:${caseId}`;
+    if (running.has(key)) throw new HttpError(409, 'Bu case için bir çalıştırma zaten sürüyor.');
+    running.add(key);
+
+    try {
+      const outcome = await runPlaywrightSpec(scriptPath);
+      await prisma.testResult.update({
+        where: { runId_caseId: { runId: id, caseId } },
+        data: {
+          status: outcome.status,
+          durationMs: outcome.durationMs,
+          executionType: 'AUTOMATED',
+          notes: outcome.notes,
+          executedAt: new Date(),
+        },
+      });
+    } finally {
+      running.delete(key);
+    }
 
     res.json(await loadRun(id));
   }),

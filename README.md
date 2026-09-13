@@ -12,7 +12,7 @@ Geliştirme planı ve kurallar için: [`CLAUDE.md`](./CLAUDE.md)
 | Frontend | React 19 + TypeScript + Vite + Tailwind CSS 4 |
 | Backend | Node.js + TypeScript + Express 5 |
 | Veritabanı | SQLite + Prisma ORM |
-| Otomasyon | Playwright (Faz 4) |
+| Otomasyon | Playwright (`apps/e2e`) |
 | Paket yöneticisi | pnpm workspace |
 
 ## Kurulum
@@ -23,6 +23,7 @@ cp apps/backend/.env.example apps/backend/.env
 pnpm --filter @qa-app/backend db:generate   # Prisma client üret
 pnpm --filter @qa-app/backend db:push       # SQLite şemasını oluştur
 pnpm --filter @qa-app/backend db:seed       # örnek veri (3 case + 1 suite)
+npx playwright install chromium             # otomasyon için (bir kez)
 ```
 
 > Prisma 7 bağlantı URL'ini şemadan değil `apps/backend/prisma.config.ts` üzerinden
@@ -77,6 +78,7 @@ Hata formatı: `400` doğrulama (`details[]` ile), `404` bulunamadı, `500` sunu
 | PATCH | `/test-runs/:id` | `COMPLETED` / `ABORTED` — sonrasında run salt okunur |
 | DELETE | `/test-runs/:id` | Run ve ekran görüntülerini siler |
 | PATCH | `/test-runs/:id/results/:caseId` | `status` ve/veya `notes` |
+| POST | `/test-runs/:id/results/:caseId/run-automated` | Playwright spec'ini çalıştırır, sonucu yazar |
 | POST | `/test-runs/:id/results/:caseId/screenshot` | multipart, alan adı `screenshot` |
 | DELETE | `/test-runs/:id/results/:caseId/screenshot` | Görüntüyü kaldırır |
 
@@ -122,6 +124,19 @@ qa-app/
 - [x] Faz 1 — Veri modeli ve backend API
 - [x] Faz 2 — Frontend: test case / suite yönetimi
 - [x] Faz 3 — Manuel test çalıştırma
-- [ ] Faz 4 — Playwright otomasyon entegrasyonu
+- [x] Faz 4 — Playwright otomasyon entegrasyonu
 - [ ] Faz 5 — Raporlama / dashboard
 - [ ] Faz 6 — Cilalama (opsiyonel)
+
+## Otomasyon (Faz 4)
+
+Bir test case'i `isAutomatable` işaretleyip `playwrightScriptPath` alanına
+`apps/e2e` köküne göreli bir yol verin (ör. `tests/smoke/test-cases.spec.ts`).
+Çalıştırıcı ekranında o case'de **Otomatik çalıştır** butonu görünür; backend
+`npx playwright test <dosya> --reporter=json` komutunu `apps/e2e` içinde
+çalıştırır, JSON raporundan PASS/FAIL, süre ve hata mesajını okuyup sonuca yazar.
+
+- Yollar `apps/e2e` dizinine hapsedilir; `..` ve mutlak yollar reddedilir.
+- Çalıştırma zaman aşımı 120 sn; aynı sonuç için eşzamanlı ikinci istek `409` alır.
+- Tarayıcıların önceden kurulu olduğu ortamlarda `E2E_CHROMIUM_PATH` ile
+  Chromium yolu verilebilir (boşsa Playwright kendi indirdiğini kullanır).

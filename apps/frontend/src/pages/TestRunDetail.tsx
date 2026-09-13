@@ -40,6 +40,7 @@ export function TestRunDetailPage() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [notes, setNotes] = useState('');
   const [busy, setBusy] = useState(false);
+  const [automating, setAutomating] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const active = run?.results[activeIndex];
@@ -82,6 +83,19 @@ export function TestRunDetailPage() {
       setActionError(err instanceof Error ? err.message : 'İşlem başarısız');
     } finally {
       setBusy(false);
+    }
+  };
+
+  const runAutomated = async () => {
+    if (!active) return;
+    setAutomating(true);
+    setActionError(null);
+    try {
+      setData(await api.runAutomated(id, active.testCase.id));
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Otomatik çalıştırma başarısız');
+    } finally {
+      setAutomating(false);
     }
   };
 
@@ -281,6 +295,41 @@ export function TestRunDetailPage() {
               <p className="text-sm text-slate-800">{active.testCase.expectedResult}</p>
             </div>
 
+            {active.testCase.isAutomatable && (
+              <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <h4 className="text-sm font-medium text-slate-700">Otomasyon</h4>
+                    <p className="truncate font-mono text-xs text-slate-500">
+                      {active.testCase.playwrightScriptPath ?? 'Script yolu tanımlı değil'}
+                    </p>
+                  </div>
+                  {editable && (
+                    <button
+                      type="button"
+                      disabled={busy || automating || !active.testCase.playwrightScriptPath}
+                      onClick={() => void runAutomated()}
+                      className={primaryButton}
+                      data-testid="run-automated"
+                    >
+                      {automating ? 'Çalışıyor…' : 'Otomatik çalıştır'}
+                    </button>
+                  )}
+                </div>
+                {automating && (
+                  <p className="mt-2 text-xs text-slate-500">
+                    Playwright çalışıyor, bu birkaç saniye sürebilir…
+                  </p>
+                )}
+                {active.executionType === 'AUTOMATED' && !automating && (
+                  <p className="mt-2 text-xs text-slate-600" data-testid="automation-meta">
+                    Son çalıştırma otomatik
+                    {active.durationMs !== null ? ` · ${(active.durationMs / 1000).toFixed(1)} sn` : ''}
+                  </p>
+                )}
+              </div>
+            )}
+
             {editable && (
               <div>
                 <h4 className="mb-2 text-sm font-medium text-slate-700">Sonuç</h4>
@@ -316,7 +365,14 @@ export function TestRunDetailPage() {
 
             <div>
               <h4 className="mb-2 text-sm font-medium text-slate-700">Not</h4>
-              {editable ? (
+              {active.executionType === 'AUTOMATED' && active.notes ? (
+                <pre
+                  className="max-h-64 overflow-auto rounded-md border border-rose-200 bg-rose-50 p-3 font-mono text-xs whitespace-pre-wrap text-rose-900"
+                  data-testid="automation-output"
+                >
+                  {active.notes}
+                </pre>
+              ) : editable ? (
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}

@@ -19,7 +19,7 @@ async function main() {
       priority: 'CRITICAL',
       tags: JSON.stringify(['auth', 'smoke']),
       isAutomatable: true,
-      playwrightScriptPath: 'tests/auth/login.spec.ts',
+      playwrightScriptPath: 'tests/smoke/test-cases.spec.ts',
     },
   });
 
@@ -35,6 +35,7 @@ async function main() {
       priority: 'HIGH',
       tags: JSON.stringify(['auth', 'negative']),
       isAutomatable: true,
+      playwrightScriptPath: 'tests/smoke/bilerek-basarisiz.spec.ts',
     },
   });
 

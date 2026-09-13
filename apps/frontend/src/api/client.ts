@@ -160,6 +160,11 @@ export const api = {
     });
   },
 
+  runAutomated: (runId: string, caseId: string) =>
+    request<TestRunDetail>(`/test-runs/${runId}/results/${caseId}/run-automated`, {
+      method: 'POST',
+    }),
+
   deleteScreenshot: (runId: string, caseId: string) =>
     request<TestRunDetail>(`/test-runs/${runId}/results/${caseId}/screenshot`, {
       method: 'DELETE',
