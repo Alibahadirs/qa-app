@@ -1,12 +1,119 @@
-// Prisma şeması — Faz 0'da sadece bağlantı ve generator tanımlı.
-// Veri modelleri (TestCase, TestSuite, TestRun, TestResult) Faz 1'de eklenecek.
+// Prisma 7 — bağlantı URL'i prisma.config.ts'te, runtime bağlantısı driver adapter ile.
+// SQLite dizi tipini desteklemediği için steps/tags alanları JSON string olarak saklanır;
+// dönüşüm src/lib/json.ts içinde tek yerde izole edilmiştir (Postgres'e geçişte orası değişir).
 
 generator client {
-  provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  runtime      = "nodejs"
+  moduleFormat = "esm"
 }
 
 datasource db {
   provider = "sqlite"
-  url      = env("DATABASE_URL")
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum RunStatus {
+  IN_PROGRESS
+  COMPLETED
+  ABORTED
+}
+
+enum ResultStatus {
+  PASS
+  FAIL
+  BLOCKED
+  SKIPPED
+  NOT_RUN
+}
+
+enum ExecutionType {
+  MANUAL
+  AUTOMATED
+}
+
+model TestCase {
+  id                   String   @id @default(cuid())
+  title                String
+  description          String?
+  /// JSON string dizisi: ["adım 1", "adım 2"]
+  steps                String   @default("[]")
+  expectedResult       String
+  priority             Priority @default(MEDIUM)
+  /// JSON string dizisi: ["regression", "login"]
+  tags                 String   @default("[]")
+  isAutomatable        Boolean  @default(false)
+  playwrightScriptPath String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  suites  TestSuiteCase[]
+  results TestResult[]
+
+  @@index([priority])
+  @@index([isAutomatable])
+}
+
+model TestSuite {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  cases TestSuiteCase[]
+  runs  TestRun[]
+}
+
+/// Suite ↔ Case ara tablosu; `order` suite içindeki sırayı tutar.
+model TestSuiteCase {
+  suiteId String
+  caseId  String
+  order   Int    @default(0)
+
+  suite    TestSuite @relation(fields: [suiteId], references: [id], onDelete: Cascade)
+  testCase TestCase  @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@id([suiteId, caseId])
+  @@index([suiteId, order])
+}
+
+model TestRun {
+  id          String    @id @default(cuid())
+  name        String
+  suiteId     String
+  status      RunStatus @default(IN_PROGRESS)
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  suite   TestSuite    @relation(fields: [suiteId], references: [id], onDelete: Cascade)
+  results TestResult[]
+
+  @@index([suiteId])
+  @@index([status])
+}
+
+model TestResult {
+  id             String        @id @default(cuid())
+  runId          String
+  caseId         String
+  status         ResultStatus  @default(NOT_RUN)
+  notes          String?
+  screenshotPath String?
+  executionType  ExecutionType @default(MANUAL)
+  durationMs     Int?
+  executedAt     DateTime      @default(now())
+
+  run      TestRun  @relation(fields: [runId], references: [id], onDelete: Cascade)
+  testCase TestCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@unique([runId, caseId])
+  @@index([status])
 }

@@ -20,7 +20,14 @@ Geliştirme planı ve kurallar için: [`CLAUDE.md`](./CLAUDE.md)
 ```bash
 pnpm install
 cp apps/backend/.env.example apps/backend/.env
+pnpm --filter @qa-app/backend db:generate   # Prisma client üret
+pnpm --filter @qa-app/backend db:push       # SQLite şemasını oluştur
+pnpm --filter @qa-app/backend db:seed       # örnek veri (3 case + 1 suite)
 ```
+
+> Prisma 7 bağlantı URL'ini şemadan değil `apps/backend/prisma.config.ts` üzerinden
+> okur ve runtime'da `better-sqlite3` driver adapter kullanır. Bu yüzden
+> `apps/backend/.env` dosyası olmadan hiçbir db komutu çalışmaz.
 
 ## Çalıştırma
 
@@ -38,6 +45,29 @@ curl http://localhost:3001/health
 ```
 
 Frontend'deki `/api/*` istekleri Vite dev sunucusu tarafından backend'e proxy'lenir.
+
+## API
+
+| Metot | Yol | Açıklama |
+| --- | --- | --- |
+| GET | `/health` | Sağlık kontrolü |
+| GET | `/test-cases` | Liste — `?priority=` `?tag=` `?isAutomatable=` `?q=` |
+| POST | `/test-cases` | Oluştur |
+| GET | `/test-cases/:id` | Tek kayıt |
+| PATCH | `/test-cases/:id` | Kısmi güncelle |
+| DELETE | `/test-cases/:id` | Sil |
+| GET | `/test-suites` | Liste (`caseCount` ile) |
+| POST | `/test-suites` | Oluştur (opsiyonel `caseIds[]`) |
+| GET | `/test-suites/:id` | Suite + sıralı case'ler |
+| PATCH | `/test-suites/:id` | Kısmi güncelle |
+| DELETE | `/test-suites/:id` | Sil |
+| POST | `/test-suites/:id/cases` | Case ekle (`caseIds[]`, idempotent) |
+| DELETE | `/test-suites/:id/cases/:caseId` | Case çıkar |
+| PUT | `/test-suites/:id/cases/order` | Sırala (`caseIds[]`, tam liste) |
+
+Hata formatı: `400` doğrulama (`details[]` ile), `404` bulunamadı, `500` sunucu hatası.
+
+`TestRun` ve `TestResult` modelleri şemada tanımlı; endpoint'leri Faz 3'te eklenecek.
 
 ## Script'ler
 
@@ -62,7 +92,7 @@ qa-app/
 ## Durum
 
 - [x] Faz 0 — İskelet kurulumu
-- [ ] Faz 1 — Veri modeli ve backend API
+- [x] Faz 1 — Veri modeli ve backend API
 - [ ] Faz 2 — Frontend: test case / suite yönetimi
 - [ ] Faz 3 — Manuel test çalıştırma
 - [ ] Faz 4 — Playwright otomasyon entegrasyonu
