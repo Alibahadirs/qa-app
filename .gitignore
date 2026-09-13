@@ -17,6 +17,9 @@ build/
 # prisma generated client
 apps/backend/src/generated/
 
+# yüklenen ekran görüntüleri
+apps/backend/uploads/
+
 # playwright
 test-results/
 playwright-report/

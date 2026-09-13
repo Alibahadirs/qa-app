@@ -101,9 +101,13 @@ model TestRun {
 }
 
 model TestResult {
-  id             String        @id @default(cuid())
-  runId          String
-  caseId         String
+  id     String @id @default(cuid())
+  runId  String
+  caseId String
+  /// Run başlatılırken suite sırası burada dondurulur; suite sonradan
+  /// yeniden sıralansa da geçmiş run'ların sırası değişmez.
+  order  Int    @default(0)
+
   status         ResultStatus  @default(NOT_RUN)
   notes          String?
   screenshotPath String?
@@ -115,5 +119,6 @@ model TestResult {
   testCase TestCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
 
   @@unique([runId, caseId])
+  @@index([runId, order])
   @@index([status])
 }

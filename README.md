@@ -67,7 +67,22 @@ Frontend'deki `/api/*` istekleri Vite dev sunucusu tarafından backend'e proxy'l
 
 Hata formatı: `400` doğrulama (`details[]` ile), `404` bulunamadı, `500` sunucu hatası.
 
-`TestRun` ve `TestResult` modelleri şemada tanımlı; endpoint'leri Faz 3'te eklenecek.
+### Test run (manuel çalıştırma)
+
+| Metot | Yol | Açıklama |
+| --- | --- | --- |
+| GET | `/test-runs` | Liste + durum sayaçları |
+| POST | `/test-runs` | Run başlat (`suiteId`, opsiyonel `name`) — suite sırası dondurulur |
+| GET | `/test-runs/:id` | Run + sıralı sonuçlar + case detayları |
+| PATCH | `/test-runs/:id` | `COMPLETED` / `ABORTED` — sonrasında run salt okunur |
+| DELETE | `/test-runs/:id` | Run ve ekran görüntülerini siler |
+| PATCH | `/test-runs/:id/results/:caseId` | `status` ve/veya `notes` |
+| POST | `/test-runs/:id/results/:caseId/screenshot` | multipart, alan adı `screenshot` |
+| DELETE | `/test-runs/:id/results/:caseId/screenshot` | Görüntüyü kaldırır |
+
+Yüklenen dosyalar `apps/backend/uploads/` altında tutulur, `/uploads/<dosya>` ile
+servis edilir. Sınır: 5 MB, `image/png · jpeg · webp`. Tamamlanmış bir run'a yazma
+denemeleri `409` döner.
 
 ## Ekranlar
 
@@ -103,7 +118,7 @@ qa-app/
 - [x] Faz 0 — İskelet kurulumu
 - [x] Faz 1 — Veri modeli ve backend API
 - [x] Faz 2 — Frontend: test case / suite yönetimi
-- [ ] Faz 3 — Manuel test çalıştırma
+- [ ] Faz 3 — Manuel test çalıştırma (3A backend ✓, 3B arayüz bekliyor)
 - [ ] Faz 4 — Playwright otomasyon entegrasyonu
 - [ ] Faz 5 — Raporlama / dashboard
 - [ ] Faz 6 — Cilalama (opsiyonel)
