@@ -1,0 +1,40 @@
+node_modules/
+dist/
+build/
+.output/
+
+# env
+.env
+.env.local
+.env.*.local
+
+# database
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# prisma generated client
+apps/backend/src/generated/
+
+# playwright
+test-results/
+playwright-report/
+blob-report/
+.playwright/
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# editor / os
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# caches
+.cache/
+.turbo/
+*.tsbuildinfo

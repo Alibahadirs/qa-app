@@ -1,0 +1,12 @@
+// Prisma şeması — Faz 0'da sadece bağlantı ve generator tanımlı.
+// Veri modelleri (TestCase, TestSuite, TestRun, TestResult) Faz 1'de eklenecek.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
