@@ -41,3 +41,4 @@ pnpm-debug.log*
 .cache/
 .turbo/
 *.tsbuildinfo
+kur.bat
