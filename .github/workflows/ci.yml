@@ -70,7 +70,7 @@ jobs:
           npx --yes wait-on http://localhost:3001/health http://localhost:5173 --timeout 120000
 
       - name: Otomatize test case'leri çalıştır
-        run: pnpm --filter @qa-app/e2e test -- --grep-invert "@demo"
+        run: pnpm --filter @qa-app/e2e exec playwright test --grep-invert "@demo"
 
       - name: Sunucuları durdur
         if: always()
