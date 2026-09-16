@@ -70,14 +70,34 @@ jobs:
           npx --yes wait-on http://localhost:3001/health http://localhost:5173 --timeout 120000
 
       - name: Otomatize test case'leri çalıştır
-        run: pnpm --filter @qa-app/e2e exec playwright test --grep-invert "@demo"
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: playwright-report/results.json
+        run: pnpm --filter @qa-app/e2e exec playwright test --grep-invert "@demo" --reporter=list,html,json
+
+      - name: Test özetini yaz
+        if: always()
+        run: |
+          RESULTS=apps/e2e/playwright-report/results.json
+          if [ -f "$RESULTS" ]; then
+            PASSED=$(jq '.stats.expected' "$RESULTS")
+            FAILED=$(jq '.stats.unexpected' "$RESULTS")
+            SKIPPED=$(jq '.stats.skipped' "$RESULTS")
+            FLAKY=$(jq '.stats.flaky' "$RESULTS")
+            {
+              echo "## Playwright Test Sonuçları"
+              echo ""
+              echo "| Geçti | Kaldı | Atlandı | Kararsız |"
+              echo "|---|---|---|---|"
+              echo "| $PASSED | $FAILED | $SKIPPED | $FLAKY |"
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Sunucuları durdur
         if: always()
         run: kill $(cat /tmp/be.pid) $(cat /tmp/fe.pid) || true
 
       - name: Playwright raporunu yükle
-        if: failure()
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
