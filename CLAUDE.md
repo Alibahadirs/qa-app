@@ -93,3 +93,4 @@ Tek dil (TypeScript) hem frontend hem backend'de kullanılacak — bu, Claude Co
 3. Faz bitince özeti kontrol et, `/clear` çalıştır.
 4. Sıradaki session'da: "CLAUDE.md'yi oku. Faz 1'i uygula." şeklinde devam et.
 5. Bir faz çok büyük gelirse ("Faz 3'ü A ve B alt adımına böl, önce A'yı yap" gibi) daha küçük parçalara ayır.
+6. Tüm yanıtlarını türkçe ver.
