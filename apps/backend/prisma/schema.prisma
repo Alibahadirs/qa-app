@@ -122,3 +122,25 @@ model TestResult {
   @@index([runId, order])
   @@index([status])
 }
+
+/// Faz 7A — bir sayfada keşfedilen etkileşilebilir element ve onun sıralı aday seçicileri.
+/// `key` deterministiktir: aynı sayfa yeniden kataloglandığında kayıt upsert edilir,
+/// böylece senaryo adımlarının işaret ettiği element id'si sabit kalır.
+model PageElement {
+  id String @id @default(cuid())
+  /// 7B'de Scenario modeli eklenince ilişkiye dönüşecek; şu an katalog URL bazlı.
+  scenarioId String?
+  pageUrl    String
+  key        String
+  /// Kullanıcıya gösterilen ad (erişilebilir ad / etiket / metin).
+  label   String
+  role    String
+  tagName String
+  /// JSON dizisi: SelectorCandidate[] (bkz. src/lib/discovery/selectors.ts)
+  candidateSelectors String
+  discoveredAt       DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([pageUrl, key])
+  @@index([scenarioId])
+}

@@ -86,6 +86,73 @@ Tek dil (TypeScript) hem frontend hem backend'de kullanılacak — bu, Claude Co
 - Dışa aktarma (CSV/PDF rapor).
 - CI entegrasyonu (GitHub Actions'ta otomatik case'leri çalıştırma).
 
+
+### Faz 7 — Kodsuz Senaryo Otomasyonu
+
+Faz 4'te otomatik test için `.spec.ts` dosyasını kullanıcı yazıyordu. Faz 7, senaryoyu
+arayüzden kurmayı sağlar: **kod yazmadan** adım adım senaryo tanımla, çalıştır, rapor al.
+Mevcut `playwrightScriptPath` yolu kaldırılmaz — senaryo, ikinci bir otomasyon yöntemidir.
+
+**Tasarım ilkeleri (pazarlık konusu değil):**
+
+1. **Seçici dayanıklılığı her şeyden önemli.** Tek bir XPath saklamak yasak. Her element
+   için sıralı bir **aday seçici listesi** üretilir ve saklanır:
+   `getByRole(role, {name})` → `getByTestId` → `getByLabel` → `getByPlaceholder` →
+   kararlı CSS (id/class) → `getByText` → son çare kısa CSS yolu.
+   Otomatik üretilmiş görünen id/class'lar (hash benzeri desenler: `css-1x2y3z`, `_a8f3`,
+   yoğun rakam) elenir.
+2. **Çalışma anında kademeli düşme.** İlk aday tutmazsa sıradaki denenir. Hangi adayın
+   tuttuğu kaydedilir; ilk aday dışında bir şey tuttuysa adım "geçti (uyarı: seçici kaydı)"
+   olarak işaretlenir ve raporda gösterilir. **Bu, sayfanın değiştiğinin erken habercisidir
+   ve ürünün en değerli özelliğidir.**
+3. **Doğrulama adımı olmadan senaryo kaydedilemez.** Sadece tıklayan bir senaryo yalnızca
+   "çökmedi"yi ölçer. En az bir doğrulama adımı zorunludur (uyarı verilir).
+4. **Element keşfi süreklidir.** Başlangıç URL'i kataloglanır; senaryo yeni bir sayfaya
+   geçtiğinde o sayfa da kataloglanır.
+
+**Veri modeli eklentileri:**
+
+| Model | Alanlar |
+| --- | --- |
+| `Scenario` | id, ad, açıklama?, baseUrl, testCaseId? (mevcut case'e bağlama), createdAt, updatedAt |
+| `ScenarioStep` | id, scenarioId, order, action, targetElementId?, value?, timeoutMs? |
+| `PageElement` | id, scenarioId, pageUrl, etiket (görünen ad), role, tagName, candidateSelectors (sıralı JSON), discoveredAt |
+| `StepResult` | id, testResultId, stepId, status, durationMs, usedSelectorIndex, screenshotPath?, error? |
+
+**Adım tipleri:** `GOTO`, `CLICK`, `TYPE`, `SELECT`, `WAIT` (süre / element / URL),
+`ASSERT_TEXT`, `ASSERT_VISIBLE`, `ASSERT_NOT_VISIBLE`, `ASSERT_URL`, `ASSERT_VALUE`.
+
+**Çift yönlü senaryo yazımı:** Aynı senaryo hem form tabanlı adım editöründe hem de
+metin olarak görüntülenir; ikisi arasında kayıpsız geçilebilir. Metin dili satır tabanlı:
+
+```
+git: https://ornek.com/giris
+yaz: E-posta = test@ornek.com
+yaz: Şifre = {{sifre}}
+tikla: Giriş yap
+bekle: url içerir /panel
+dogrula: metin = Hoş geldiniz
+dogrula: gorunur = Çıkış
+```
+
+`{{degisken}}` ile parametre kullanılır; parola gibi değerler senaryo metnine düz yazılmaz,
+ayrı bir değişken deposunda tutulur.
+
+**Alt fazlar (tek seferde yapılmaz):**
+
+- **7A — Element keşfi ve seçici üretimi.** Bir URL verildiğinde tıklanabilir/yazılabilir
+  elementleri çıkaran, her biri için aday seçici listesi üreten servis + API.
+  *Doğrulama:* gerçek bir sayfada üretilen seçicilerin hepsi Playwright ile tek tek
+  denenir ve o elementi bulduğu kanıtlanır.
+- **7B — Senaryo modeli ve metin dili.** CRUD + ayrıştırıcı/üretici (metin ↔ adım listesi),
+  çift yönlü dönüşümün kayıpsızlığı test edilir.
+- **7C — Adım çalıştırıcı.** Playwright ile adım adım yürütme, kademeli seçici düşme,
+  adım bazlı sonuç, hata anında ekran görüntüsü. Mevcut `TestRun`/`TestResult` yapısına bağlanır.
+- **7D — Arayüz.** Element kataloğu, adım editörü, metin görünümü, "çalıştır" ve adım adım rapor.
+
+**Çıktı:** Bir URL verip arayüzden senaryo kurabiliyor, tek tıkla çalıştırıp hangi adımda
+ne olduğunu ekran görüntüsüyle görebiliyorum.
+
 ## 5. Kullanım Talimatı
 
 1. Bu dosya proje kökünde `CLAUDE.md` olarak durur; Claude Code her session'da otomatik okur.
@@ -93,4 +160,3 @@ Tek dil (TypeScript) hem frontend hem backend'de kullanılacak — bu, Claude Co
 3. Faz bitince özeti kontrol et, `/clear` çalıştır.
 4. Sıradaki session'da: "CLAUDE.md'yi oku. Faz 1'i uygula." şeklinde devam et.
 5. Bir faz çok büyük gelirse ("Faz 3'ü A ve B alt adımına böl, önce A'yı yap" gibi) daha küçük parçalara ayır.
-6. Tüm yanıtlarını türkçe ver.

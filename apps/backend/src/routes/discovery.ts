@@ -1,0 +1,92 @@
+import { Router } from 'express';
+import { prisma } from '../db.js';
+import { asyncHandler } from '../lib/errors.js';
+import { discoverPage } from '../lib/discovery/discover.js';
+import { describeCandidate } from '../lib/discovery/selectors.js';
+import type { SelectorCandidate } from '../lib/discovery/types.js';
+import { discoverSchema, discoveryQuerySchema } from '../schemas/discovery.js';
+
+export const discoveryRouter = Router();
+
+/** URL'i kataloğa yazarken tek biçime indirger (hash parçası anlamsız). */
+function normalizeUrl(url: string): string {
+  const parsed = new URL(url);
+  parsed.hash = '';
+  return parsed.toString();
+}
+
+function toResponse(row: {
+  id: string;
+  pageUrl: string;
+  label: string;
+  role: string;
+  tagName: string;
+  candidateSelectors: string;
+  discoveredAt: Date;
+}) {
+  const candidates = JSON.parse(row.candidateSelectors) as SelectorCandidate[];
+  return {
+    id: row.id,
+    pageUrl: row.pageUrl,
+    label: row.label,
+    role: row.role,
+    tagName: row.tagName,
+    candidateSelectors: candidates,
+    // Arayüzde okunabilir gösterim; seçicinin kendisi yapısal olarak saklanır.
+    candidatePreviews: candidates.map(describeCandidate),
+    discoveredAt: row.discoveredAt,
+  };
+}
+
+/** Bir sayfayı tarar, doğrulanmış seçicilerle elementleri kataloğa yazar. */
+discoveryRouter.post(
+  '/',
+  asyncHandler(async (req, res) => {
+    const { url, scenarioId } = discoverSchema.parse(req.body);
+    const pageUrl = normalizeUrl(url);
+
+    const elements = await discoverPage(pageUrl);
+
+    const saved = await prisma.$transaction(
+      elements.map((el) =>
+        prisma.pageElement.upsert({
+          where: { pageUrl_key: { pageUrl, key: el.key } },
+          create: {
+            pageUrl,
+            key: el.key,
+            scenarioId: scenarioId ?? null,
+            label: el.label,
+            role: el.role,
+            tagName: el.tagName,
+            candidateSelectors: JSON.stringify(el.candidateSelectors),
+          },
+          update: {
+            label: el.label,
+            role: el.role,
+            tagName: el.tagName,
+            candidateSelectors: JSON.stringify(el.candidateSelectors),
+            ...(scenarioId ? { scenarioId } : {}),
+          },
+        }),
+      ),
+    );
+
+    res.status(201).json({ pageUrl, count: saved.length, elements: saved.map(toResponse) });
+  }),
+);
+
+/** Daha önce kataloglanmış elementleri döner (tarama yapmaz). */
+discoveryRouter.get(
+  '/',
+  asyncHandler(async (req, res) => {
+    const { url } = discoveryQuerySchema.parse(req.query);
+    const pageUrl = normalizeUrl(url);
+
+    const rows = await prisma.pageElement.findMany({
+      where: { pageUrl },
+      orderBy: { discoveredAt: 'asc' },
+    });
+
+    res.json({ pageUrl, count: rows.length, elements: rows.map(toResponse) });
+  }),
+);

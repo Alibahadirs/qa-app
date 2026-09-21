@@ -6,6 +6,7 @@ import { errorHandler } from './lib/errors.js';
 import { UPLOAD_DIR, UPLOAD_ROUTE } from './lib/uploads.js';
 import { testCasesRouter } from './routes/testCases.js';
 import { authRouter } from './routes/auth.js';
+import { discoveryRouter } from './routes/discovery.js';
 import { statsRouter } from './routes/stats.js';
 import { testRunsRouter } from './routes/testRuns.js';
 import { testSuitesRouter } from './routes/testSuites.js';
@@ -29,6 +30,7 @@ app.use('/test-cases', testCasesRouter);
 app.use('/test-suites', testSuitesRouter);
 app.use('/test-runs', testRunsRouter);
 app.use('/stats', statsRouter);
+app.use('/discovery', discoveryRouter);
 
 app.use((_req, res) => {
   res.status(404).json({ error: 'Endpoint bulunamadı' });

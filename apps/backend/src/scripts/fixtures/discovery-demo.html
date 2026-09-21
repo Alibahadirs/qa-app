@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <title>Keşif doğrulama sayfası</title>
+  </head>
+  <body>
+    <!-- data-truth: yalnızca doğrulama içindir; keşif bu attribute'u kullanmaz. -->
+    <h1>Giriş</h1>
+
+    <form>
+      <label for="eposta">E-posta</label>
+      <input id="eposta" name="eposta" type="email" data-truth="eposta-input" />
+
+      <label for="sifre">Şifre</label>
+      <input id="sifre" name="sifre" type="password" data-truth="sifre-input" />
+
+      <input type="search" placeholder="Sitede ara" data-truth="arama-input" />
+
+      <label for="rol">Rol</label>
+      <select id="rol" data-truth="rol-select">
+        <option value="admin">Yönetici</option>
+        <option value="user">Kullanıcı</option>
+      </select>
+
+      <label><input type="checkbox" class="css-1x2y3z" data-truth="beni-hatirla" /> Beni hatırla</label>
+
+      <button type="submit" class="_a8f3" data-truth="giris-btn">Giriş yap</button>
+    </form>
+
+    <button data-testid="parolami-unuttum" class="Button_root__9k2x" data-truth="unuttum-btn">
+      Parolamı unuttum
+    </button>
+
+    <button aria-label="Menüyü aç" data-truth="menu-btn">☰</button>
+
+    <a href="/kayit" data-truth="kayit-link">Kayıt ol</a>
+
+    <!-- Aynı metne sahip iki buton: rol adayı benzersiz olmadığı için elenmeli. -->
+    <div>
+      <button data-truth="sil-1">Sil</button>
+    </div>
+    <div>
+      <button data-truth="sil-2">Sil</button>
+    </div>
+
+    <span role="button" tabindex="0" id="yardim" data-truth="yardim-span">Yardım</span>
+  </body>
+</html>
