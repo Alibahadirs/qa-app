@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { prisma } from '../db.js';
-import { asyncHandler } from '../lib/errors.js';
+import { HttpError, asyncHandler } from '../lib/errors.js';
 import { discoverPage } from '../lib/discovery/discover.js';
 import { describeCandidate } from '../lib/discovery/selectors.js';
 import type { SelectorCandidate } from '../lib/discovery/types.js';
@@ -44,6 +44,14 @@ discoveryRouter.post(
   asyncHandler(async (req, res) => {
     const { url, scenarioId } = discoverSchema.parse(req.body);
     const pageUrl = normalizeUrl(url);
+
+    if (scenarioId) {
+      const scenario = await prisma.scenario.findUnique({
+        where: { id: scenarioId },
+        select: { id: true },
+      });
+      if (!scenario) throw new HttpError(400, `Senaryo bulunamadı: ${scenarioId}`);
+    }
 
     const elements = await discoverPage(pageUrl);
 
