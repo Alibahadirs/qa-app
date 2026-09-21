@@ -9,6 +9,7 @@ import {
   type ElementRef,
   type ParsedStep,
 } from '../lib/scenario/text.js';
+import { runScenario } from '../lib/scenario/runner.js';
 import {
   createScenarioSchema,
   replaceStepsSchema,
@@ -196,6 +197,92 @@ scenariosRouter.put(
     ]);
 
     res.json(toDto(await loadScenario(scenarioId)));
+  }),
+);
+
+/**
+ * Aynı senaryonun iki kez paralel çalıştırılmasını engelleyen basit kilit
+ * (test run'larındaki `run-automated` ile aynı yaklaşım).
+ */
+const running = new Set<string>();
+
+/** ScenarioRun'ı adım sonuçlarıyla birlikte rapora çevirir. */
+async function loadScenarioRun(runId: string) {
+  const run = await prisma.scenarioRun.findUnique({
+    where: { id: runId },
+    include: { steps: { orderBy: { order: 'asc' } } },
+  });
+  if (!run) throw notFound('Senaryo çalıştırması', runId);
+
+  const steps = run.steps.map((s) => ({
+    ...s,
+    // İlke 2: ilk aday tutmadıysa adım geçse bile bu bir erken uyarıdır.
+    selectorDrift: s.usedSelectorIndex !== null && s.usedSelectorIndex > 0,
+    screenshotUrl: s.screenshotPath ? `/uploads/${s.screenshotPath}` : null,
+  }));
+
+  return {
+    ...run,
+    steps,
+    summary: {
+      total: steps.length,
+      passed: steps.filter((s) => s.status === 'PASS').length,
+      failed: steps.filter((s) => s.status === 'FAIL').length,
+      skipped: steps.filter((s) => s.status === 'SKIPPED').length,
+      selectorDrifts: steps.filter((s) => s.selectorDrift).length,
+    },
+  };
+}
+
+/** Senaryoyu çalıştırır ve adım adım raporu döner. */
+scenariosRouter.post(
+  '/:id/run',
+  asyncHandler(async (req, res) => {
+    const scenarioId = req.params.id as string;
+    await loadScenario(scenarioId);
+
+    if (running.has(scenarioId)) {
+      throw new HttpError(409, 'Bu senaryo için bir çalıştırma zaten sürüyor.');
+    }
+    running.add(scenarioId);
+    try {
+      const runId = await runScenario(scenarioId);
+      res.status(201).json(await loadScenarioRun(runId));
+    } finally {
+      running.delete(scenarioId);
+    }
+  }),
+);
+
+/** Senaryonun çalıştırma geçmişi (yeniden eskiye). */
+scenariosRouter.get(
+  '/:id/runs',
+  asyncHandler(async (req, res) => {
+    const scenarioId = req.params.id as string;
+    await loadScenario(scenarioId);
+
+    const runs = await prisma.scenarioRun.findMany({
+      where: { scenarioId },
+      orderBy: { startedAt: 'desc' },
+      take: 50,
+      include: { steps: { select: { status: true, usedSelectorIndex: true } } },
+    });
+
+    res.json(
+      runs.map(({ steps, ...run }) => ({
+        ...run,
+        stepCount: steps.length,
+        failedCount: steps.filter((s) => s.status === 'FAIL').length,
+        selectorDrifts: steps.filter((s) => (s.usedSelectorIndex ?? 0) > 0).length,
+      })),
+    );
+  }),
+);
+
+scenariosRouter.get(
+  '/:id/runs/:runId',
+  asyncHandler(async (req, res) => {
+    res.json(await loadScenarioRun(req.params.runId as string));
   }),
 );
 

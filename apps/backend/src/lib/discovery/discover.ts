@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { chromium } from 'playwright';
+import { chromium, type Page } from 'playwright';
 import { HttpError } from '../errors.js';
 import { MARKER_ATTRIBUTE, extractElements } from './extract.js';
 import { buildCandidates, buildLocator } from './selectors.js';
@@ -39,7 +39,7 @@ function elementKey(raw: RawElement): string {
  * vermeli ve eşleşen element aranan işareti taşımalı. Kanıtlanamayan aday atılır.
  */
 async function verifyCandidate(
-  page: import('playwright').Page,
+  page: Page,
   candidate: SelectorCandidate,
   eid: string,
 ): Promise<boolean> {
@@ -53,7 +53,47 @@ async function verifyCandidate(
   }
 }
 
-/** Verilen URL'i açar, etkileşilebilir elementleri ve doğrulanmış seçicilerini döner. */
+/**
+ * Açık bir sayfayı kataloglar. Senaryo çalışırken yeni bir sayfaya geçildiğinde de
+ * kullanılır (tasarım ilkesi 4: element keşfi süreklidir) — ayrı tarayıcı açmaz.
+ */
+export async function discoverOnPage(page: Page): Promise<DiscoveredElement[]> {
+  const rawElements = (await page.evaluate(extractSource())) as RawElement[];
+
+  const discovered: DiscoveredElement[] = [];
+  const seenKeys = new Set<string>();
+
+  for (const raw of rawElements) {
+    const verified: SelectorCandidate[] = [];
+    for (const candidate of buildCandidates(raw)) {
+      if (await verifyCandidate(page, candidate, raw.eid)) verified.push(candidate);
+    }
+    // Hiçbir aday kanıtlanamadıysa element hedeflenemez; kataloğa alınmaz.
+    if (verified.length === 0) continue;
+
+    let key = elementKey(raw);
+    // Aynı sayfada birebir aynı sinyallere sahip iki element olabilir.
+    if (seenKeys.has(key)) key = `${key}-${discovered.length}`;
+    seenKeys.add(key);
+
+    discovered.push({
+      key,
+      label: raw.accessibleName || raw.placeholder || raw.text || raw.tagName,
+      role: raw.role,
+      tagName: raw.tagName,
+      candidateSelectors: verified,
+    });
+  }
+
+  // Sayfaya yazılan geçici işaretleri temizle (DOM'u bulduğumuz gibi bırak).
+  await page.evaluate((attr) => {
+    document.querySelectorAll(`[${attr}]`).forEach((el) => el.removeAttribute(attr));
+  }, MARKER_ATTRIBUTE);
+
+  return discovered;
+}
+
+/** Verilen URL'i yeni bir tarayıcıda açar ve kataloglar. */
 export async function discoverPage(url: string): Promise<DiscoveredElement[]> {
   const browser = await chromium.launch();
   try {
@@ -64,40 +104,7 @@ export async function discoverPage(url: string): Promise<DiscoveredElement[]> {
       throw new HttpError(400, `Sayfa açılamadı: ${(err as Error).message}`);
     }
     await page.waitForTimeout(SETTLE_MS);
-
-    const rawElements = (await page.evaluate(extractSource())) as RawElement[];
-
-    const discovered: DiscoveredElement[] = [];
-    const seenKeys = new Set<string>();
-
-    for (const raw of rawElements) {
-      const verified: SelectorCandidate[] = [];
-      for (const candidate of buildCandidates(raw)) {
-        if (await verifyCandidate(page, candidate, raw.eid)) verified.push(candidate);
-      }
-      // Hiçbir aday kanıtlanamadıysa element hedeflenemez; kataloğa alınmaz.
-      if (verified.length === 0) continue;
-
-      let key = elementKey(raw);
-      // Aynı sayfada birebir aynı sinyallere sahip iki element olabilir.
-      if (seenKeys.has(key)) key = `${key}-${discovered.length}`;
-      seenKeys.add(key);
-
-      discovered.push({
-        key,
-        label: raw.accessibleName || raw.placeholder || raw.text || raw.tagName,
-        role: raw.role,
-        tagName: raw.tagName,
-        candidateSelectors: verified,
-      });
-    }
-
-    // Sayfaya yazılan geçici işaretleri temizle (DOM'u bulduğumuz gibi bırak).
-    await page.evaluate((attr) => {
-      document.querySelectorAll(`[${attr}]`).forEach((el) => el.removeAttribute(attr));
-    }, MARKER_ATTRIBUTE);
-
-    return discovered;
+    return await discoverOnPage(page);
   } finally {
     await browser.close();
   }

@@ -118,6 +118,7 @@ model TestResult {
 
   run      TestRun  @relation(fields: [runId], references: [id], onDelete: Cascade)
   testCase TestCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  scenarioRuns ScenarioRun[]
 
   @@unique([runId, caseId])
   @@index([runId, order])
@@ -145,7 +146,7 @@ model PageElement {
   scenario Scenario?      @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
   steps    ScenarioStep[]
 
-  @@unique([pageUrl, key])
+  @@unique([scenarioId, pageUrl, key])
   @@index([scenarioId])
 }
 
@@ -177,6 +178,7 @@ model Scenario {
 
   testCase  TestCase?           @relation(fields: [testCaseId], references: [id], onDelete: SetNull)
   steps     ScenarioStep[]
+  runs      ScenarioRun[]
   elements  PageElement[]
   variables ScenarioVariable[]
 
@@ -196,6 +198,7 @@ model ScenarioStep {
   value           String?
   timeoutMs       Int?
 
+  results  StepResult[]
   scenario Scenario     @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
   target   PageElement? @relation(fields: [targetElementId], references: [id], onDelete: SetNull)
 
@@ -215,4 +218,49 @@ model ScenarioVariable {
   scenario Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
 
   @@unique([scenarioId, name])
+}
+
+/// Faz 7C — bir senaryonun tek bir çalıştırılışı.
+/// Senaryo tek başına da çalıştırılabilir; bir test run'ı içinden tetiklendiğinde
+/// `testResultId` ile ilgili TestResult'a bağlanır (manuel/otomatik aynı tabloda toplanır).
+model ScenarioRun {
+  id           String       @id @default(cuid())
+  scenarioId   String
+  testResultId String?
+  status       ResultStatus @default(NOT_RUN)
+  startedAt    DateTime     @default(now())
+  completedAt  DateTime?
+  durationMs   Int?
+  /// Adım dışı hata (tarayıcı açılamadı, senaryoda adım yok vb.).
+  error        String?
+
+  scenario   Scenario     @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  testResult TestResult?  @relation(fields: [testResultId], references: [id], onDelete: SetNull)
+  steps      StepResult[]
+
+  @@index([scenarioId, startedAt])
+  @@index([testResultId])
+}
+
+/// Adım bazlı sonuç. `usedSelectorIndex > 0` ise ilk aday tutmamış demektir:
+/// adım geçmiştir ama "seçici kayması" uyarısı taşır (tasarım ilkesi 2).
+model StepResult {
+  id                String       @id @default(cuid())
+  scenarioRunId     String
+  /// Adım sonradan silinse de geçmiş rapor okunabilir kalsın diye opsiyonel.
+  stepId            String?
+  order             Int
+  action            StepAction
+  /// Raporda gösterilen, metin dilindeki satırın kendisi.
+  description       String
+  status            ResultStatus
+  durationMs        Int
+  usedSelectorIndex Int?
+  screenshotPath    String?
+  error             String?
+
+  run  ScenarioRun   @relation(fields: [scenarioRunId], references: [id], onDelete: Cascade)
+  step ScenarioStep? @relation(fields: [stepId], references: [id], onDelete: SetNull)
+
+  @@index([scenarioRunId, order])
 }

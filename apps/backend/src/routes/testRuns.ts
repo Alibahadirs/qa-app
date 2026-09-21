@@ -6,6 +6,7 @@ import { HttpError, asyncHandler, notFound } from '../lib/errors.js';
 import { csvFilename, toCsv } from '../lib/csv.js';
 import { parseStringArray } from '../lib/json.js';
 import { resolveScriptPath, runPlaywrightSpec } from '../lib/playwright.js';
+import { runScenario } from '../lib/scenario/runner.js';
 import { UPLOAD_DIR, UPLOAD_ROUTE, screenshotUpload, toUploadError } from '../lib/uploads.js';
 import {
   createTestRunSchema,
@@ -265,6 +266,53 @@ testRunsRouter.post(
           executedAt: new Date(),
         },
       });
+    } finally {
+      running.delete(key);
+    }
+
+    res.json(await loadRun(id));
+  }),
+);
+
+/**
+ * Faz 7C — case'e bağlı kodsuz senaryoyu çalıştırır ve sonucu bu TestResult'a yazar.
+ * `.spec.ts` yolu ile çalışan `run-automated` yerini korur; bu ikinci otomasyon yöntemidir.
+ */
+testRunsRouter.post(
+  '/:id/results/:caseId/run-scenario',
+  asyncHandler(async (req, res) => {
+    const id = req.params.id as string;
+    const caseId = req.params.caseId as string;
+    await assertRunEditable(id);
+
+    const result = await prisma.testResult.findUnique({
+      where: { runId_caseId: { runId: id, caseId } },
+      select: { id: true },
+    });
+    if (!result) throw new HttpError(404, `Run ${id} içinde case bulunamadı: ${caseId}`);
+
+    const requested = typeof req.body?.scenarioId === 'string' ? req.body.scenarioId : null;
+    const scenarios = await prisma.scenario.findMany({
+      where: { testCaseId: caseId },
+      select: { id: true, name: true },
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    if (scenarios.length === 0) {
+      throw new HttpError(400, 'Bu test case\'e bağlı bir senaryo yok.');
+    }
+    const scenarioId = requested ?? scenarios[0]!.id;
+    if (!scenarios.some((s) => s.id === scenarioId)) {
+      throw new HttpError(400, 'Senaryo bu test case\'e bağlı değil.', {
+        available: scenarios,
+      });
+    }
+
+    const key = `${id}:${caseId}`;
+    if (running.has(key)) throw new HttpError(409, 'Bu case için bir çalıştırma zaten sürüyor.');
+    running.add(key);
+    try {
+      await runScenario(scenarioId, { testResultId: result.id });
     } finally {
       running.delete(key);
     }
