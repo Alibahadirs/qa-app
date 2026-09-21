@@ -12,6 +12,8 @@ import { TestRunList } from './pages/TestRunList.js';
 import { TestRunNew } from './pages/TestRunNew.js';
 import { TestSuiteDetailPage } from './pages/TestSuiteDetail.js';
 import { TestSuiteList } from './pages/TestSuiteList.js';
+import { ScenarioList } from './pages/ScenarioList.js';
+import { ScenarioDetailPage } from './pages/ScenarioDetail.js';
 
 export default function App() {
   const [auth, setAuth] = useState<AuthState | null>(null);
@@ -48,6 +50,8 @@ export default function App() {
           <Route path="/test-runs" element={<TestRunList />} />
           <Route path="/test-runs/new" element={<TestRunNew />} />
           <Route path="/test-runs/:id" element={<TestRunDetailPage />} />
+          <Route path="/scenarios" element={<ScenarioList />} />
+          <Route path="/scenarios/:id" element={<ScenarioDetailPage />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>
       </Routes>

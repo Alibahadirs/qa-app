@@ -1,5 +1,11 @@
 import type {
+  DiscoveryResponse,
   ResultStatus,
+  ScenarioDetail,
+  ScenarioRunDetail,
+  ScenarioRunSummary,
+  ScenarioStepInput,
+  ScenarioSummary,
   Stats,
   TestCase,
   TestCaseFilters,
@@ -189,5 +195,62 @@ export const api = {
   deleteScreenshot: (runId: string, caseId: string) =>
     request<TestRunDetail>(`/test-runs/${runId}/results/${caseId}/screenshot`, {
       method: 'DELETE',
+    }),
+
+  /* ---- Faz 7: kodsuz senaryo otomasyonu ---- */
+
+  listScenarios: () => request<ScenarioSummary[]>('/scenarios'),
+
+  getScenario: (id: string) => request<ScenarioDetail>(`/scenarios/${id}`),
+
+  createScenario: (input: { name: string; baseUrl: string; description?: string }) =>
+    request<ScenarioDetail>('/scenarios', { method: 'POST', body: JSON.stringify(input) }),
+
+  updateScenario: (
+    id: string,
+    input: { name?: string; baseUrl?: string; description?: string; testCaseId?: string | null },
+  ) => request<ScenarioDetail>(`/scenarios/${id}`, { method: 'PATCH', body: JSON.stringify(input) }),
+
+  deleteScenario: (id: string) => request<void>(`/scenarios/${id}`, { method: 'DELETE' }),
+
+  /** Adım editöründen kaydetme. */
+  saveScenarioSteps: (id: string, steps: ScenarioStepInput[]) =>
+    request<ScenarioDetail>(`/scenarios/${id}/steps`, {
+      method: 'PUT',
+      body: JSON.stringify({ steps }),
+    }),
+
+  /** Metin görünümünden kaydetme; hatalı satırlar ApiError.details içinde döner. */
+  saveScenarioText: (id: string, text: string) =>
+    request<ScenarioDetail>(`/scenarios/${id}/steps`, {
+      method: 'PUT',
+      body: JSON.stringify({ text }),
+    }),
+
+  saveScenarioVariables: (id: string, variables: { name: string; value: string; secret: boolean }[]) =>
+    request<ScenarioDetail>(`/scenarios/${id}/variables`, {
+      method: 'PUT',
+      body: JSON.stringify({ variables }),
+    }),
+
+  runScenario: (id: string) =>
+    request<ScenarioRunDetail>(`/scenarios/${id}/run`, { method: 'POST' }),
+
+  listScenarioRuns: (id: string) => request<ScenarioRunSummary[]>(`/scenarios/${id}/runs`),
+
+  getScenarioRun: (id: string, runId: string) =>
+    request<ScenarioRunDetail>(`/scenarios/${id}/runs/${runId}`),
+
+  /** Bir sayfayı tarayıp elementlerini senaryonun kataloğuna yazar. */
+  discover: (url: string, scenarioId?: string) =>
+    request<DiscoveryResponse>('/discovery', {
+      method: 'POST',
+      body: JSON.stringify({ url, ...(scenarioId ? { scenarioId } : {}) }),
+    }),
+
+  runScenarioForResult: (runId: string, caseId: string, scenarioId?: string) =>
+    request<TestRunDetail>(`/test-runs/${runId}/results/${caseId}/run-scenario`, {
+      method: 'POST',
+      body: JSON.stringify(scenarioId ? { scenarioId } : {}),
     }),
 };

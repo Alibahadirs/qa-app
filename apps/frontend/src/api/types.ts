@@ -143,3 +143,156 @@ export interface Stats {
     total: number;
   }[];
 }
+
+/* ---- Faz 7: kodsuz senaryo otomasyonu ---- */
+
+export const STEP_ACTIONS = [
+  'GOTO',
+  'CLICK',
+  'TYPE',
+  'SELECT',
+  'WAIT',
+  'ASSERT_TEXT',
+  'ASSERT_VISIBLE',
+  'ASSERT_NOT_VISIBLE',
+  'ASSERT_URL',
+  'ASSERT_VALUE',
+] as const;
+export type StepAction = (typeof STEP_ACTIONS)[number];
+
+export const STEP_ACTION_LABELS: Record<StepAction, string> = {
+  GOTO: 'Adrese git',
+  CLICK: 'Tıkla',
+  TYPE: 'Yaz',
+  SELECT: 'Seç',
+  WAIT: 'Bekle',
+  ASSERT_TEXT: 'Doğrula: metin',
+  ASSERT_VISIBLE: 'Doğrula: görünür',
+  ASSERT_NOT_VISIBLE: 'Doğrula: gizli',
+  ASSERT_URL: 'Doğrula: URL',
+  ASSERT_VALUE: 'Doğrula: değer',
+};
+
+export interface ScenarioStep {
+  id: string;
+  scenarioId: string;
+  order: number;
+  action: StepAction;
+  targetElementId: string | null;
+  value: string | null;
+  timeoutMs: number | null;
+}
+
+/** Adım editöründen gönderilen (henüz kaydedilmemiş) adım. */
+export interface ScenarioStepInput {
+  action: StepAction;
+  targetElementId: string | null;
+  value: string | null;
+  timeoutMs: number | null;
+}
+
+export interface ScenarioElement {
+  id: string;
+  label: string;
+  role: string;
+  tagName: string;
+  pageUrl: string;
+}
+
+export interface ScenarioVariable {
+  name: string;
+  /** `secret` ise sunucu değeri göndermez. */
+  value: string | null;
+  secret: boolean;
+}
+
+export interface ScenarioSummary {
+  id: string;
+  name: string;
+  description: string | null;
+  baseUrl: string;
+  testCaseId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  stepCount: number;
+  elementCount: number;
+}
+
+export interface ScenarioDetail {
+  id: string;
+  name: string;
+  description: string | null;
+  baseUrl: string;
+  testCaseId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  steps: ScenarioStep[];
+  elements: ScenarioElement[];
+  variables: ScenarioVariable[];
+  /** Adımlardan üretilen metin görünümü. */
+  text: string;
+  usedVariables: string[];
+  warnings: string[];
+}
+
+export interface StepResult {
+  id: string;
+  order: number;
+  action: StepAction;
+  description: string;
+  status: ResultStatus;
+  durationMs: number;
+  usedSelectorIndex: number | null;
+  /** İlk aday tutmadı: sayfanın değiştiğinin erken habercisi. */
+  selectorDrift: boolean;
+  screenshotUrl: string | null;
+  error: string | null;
+}
+
+export interface ScenarioRunSummary {
+  id: string;
+  scenarioId: string;
+  testResultId: string | null;
+  status: ResultStatus;
+  startedAt: string;
+  completedAt: string | null;
+  durationMs: number | null;
+  error: string | null;
+  stepCount: number;
+  failedCount: number;
+  selectorDrifts: number;
+}
+
+export interface ScenarioRunDetail {
+  id: string;
+  scenarioId: string;
+  status: ResultStatus;
+  startedAt: string;
+  completedAt: string | null;
+  durationMs: number | null;
+  error: string | null;
+  steps: StepResult[];
+  summary: {
+    total: number;
+    passed: number;
+    failed: number;
+    skipped: number;
+    selectorDrifts: number;
+  };
+}
+
+export interface DiscoveredElement {
+  id: string;
+  pageUrl: string;
+  label: string;
+  role: string;
+  tagName: string;
+  candidatePreviews: string[];
+  discoveredAt: string;
+}
+
+export interface DiscoveryResponse {
+  pageUrl: string;
+  count: number;
+  elements: DiscoveredElement[];
+}

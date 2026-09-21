@@ -27,6 +27,9 @@ export function Layout({ onLogout }: { onLogout?: () => void }) {
             <NavLink to="/test-runs" className={linkClass}>
               Run'lar
             </NavLink>
+            <NavLink to="/scenarios" className={linkClass}>
+              Senaryolar
+            </NavLink>
             {onLogout && (
               <button
                 type="button"

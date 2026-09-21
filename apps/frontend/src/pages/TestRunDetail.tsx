@@ -5,6 +5,7 @@ import {
   MARKABLE_STATUSES,
   RESULT_LABELS,
   type ResultStatus,
+  type ScenarioSummary,
   type TestRunDetail as RunDetail,
 } from '../api/types.js';
 import {
@@ -44,6 +45,12 @@ export function TestRunDetailPage() {
   const [actionError, setActionError] = useState<string | null>(null);
 
   const active = run?.results[activeIndex];
+
+  // Faz 7: aktif case'e bağlı kodsuz senaryolar.
+  const scenarios = useAsync<ScenarioSummary[]>(() => api.listScenarios(), []);
+  const caseScenarios = (scenarios.data ?? []).filter(
+    (s) => active && s.testCaseId === active.testCase.id,
+  );
   const editable = run?.status === 'IN_PROGRESS';
 
   // Aktif case değişince not alanı sunucudaki değere senkronlanır.
@@ -94,6 +101,20 @@ export function TestRunDetailPage() {
       setData(await api.runAutomated(id, active.testCase.id));
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Otomatik çalıştırma başarısız');
+    } finally {
+      setAutomating(false);
+    }
+  };
+
+  /** Faz 7: case'e bağlı kodsuz senaryoyu çalıştırır (script yolundan bağımsız yöntem). */
+  const runScenario = async (scenarioId: string) => {
+    if (!active) return;
+    setAutomating(true);
+    setActionError(null);
+    try {
+      setData(await api.runScenarioForResult(id, active.testCase.id, scenarioId));
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Senaryo çalıştırılamadı');
     } finally {
       setAutomating(false);
     }
@@ -372,6 +393,36 @@ export function TestRunDetailPage() {
                     {active.durationMs !== null ? ` · ${(active.durationMs / 1000).toFixed(1)} sn` : ''}
                   </p>
                 )}
+              </div>
+            )}
+
+            {caseScenarios.length > 0 && (
+              <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
+                <h4 className="text-sm font-medium text-slate-700">Kodsuz senaryolar</h4>
+                <ul className="mt-2 space-y-2">
+                  {caseScenarios.map((scenario) => (
+                    <li key={scenario.id} className="flex flex-wrap items-center gap-2">
+                      <Link
+                        to={`/scenarios/${scenario.id}`}
+                        className="text-sm text-slate-700 hover:underline"
+                      >
+                        {scenario.name}
+                      </Link>
+                      <span className="text-xs text-slate-500">{scenario.stepCount} adım</span>
+                      {editable && (
+                        <button
+                          type="button"
+                          disabled={busy || automating}
+                          onClick={() => void runScenario(scenario.id)}
+                          className={`${secondaryButton} ml-auto`}
+                          data-testid="run-scenario-for-result"
+                        >
+                          {automating ? 'Çalışıyor…' : 'Senaryoyu çalıştır'}
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
 
