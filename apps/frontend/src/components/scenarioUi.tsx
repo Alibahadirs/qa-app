@@ -4,6 +4,9 @@ import {
   STEP_ACTION_LABELS,
   type ResultStatus,
   type ScenarioElement,
+  type ScenarioSchedule,
+  type ScheduleInput,
+  type ScheduleKind,
   type ScenarioStepInput,
   type StepAction,
   type StepResult,
@@ -374,6 +377,86 @@ export function VariableEditor({
       >
         + Değişken ekle
       </button>
+    </div>
+  );
+}
+
+/* ---- Faz 8B: zamanlama ---- */
+
+const SCHEDULE_KIND_LABELS: Record<ScheduleKind, string> = {
+  INTERVAL: 'Her N dakikada',
+  DAILY: 'Her gün saat',
+};
+
+/** Zamanlamayı insan diline çevirir; kapalıysa bunu açıkça söyler. */
+export function describeSchedule(schedule: ScenarioSchedule): string {
+  const what =
+    schedule.kind === 'INTERVAL'
+      ? `her ${schedule.intervalMinutes} dakikada bir`
+      : `her gün ${schedule.dailyAt}`;
+  return schedule.enabled ? what : `${what} (kapalı)`;
+}
+
+export function ScheduleEditor({
+  draft,
+  onChange,
+}: {
+  draft: ScheduleInput;
+  onChange: (next: ScheduleInput) => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      <label className="flex items-center gap-1.5 text-sm text-slate-700">
+        <input
+          type="checkbox"
+          checked={draft.enabled}
+          onChange={(e) => onChange({ ...draft, enabled: e.target.checked })}
+          aria-label="Zamanlama açık"
+        />
+        Açık
+      </label>
+
+      <select
+        value={draft.kind}
+        onChange={(e) => {
+          const kind = e.target.value as ScheduleKind;
+          // Biçim değişince diğer biçimin alanı anlamını yitirir.
+          onChange({
+            ...draft,
+            kind,
+            intervalMinutes: kind === 'INTERVAL' ? (draft.intervalMinutes ?? 60) : null,
+            dailyAt: kind === 'DAILY' ? (draft.dailyAt ?? '09:00') : null,
+          });
+        }}
+        className={`${cellClass} w-48`}
+        aria-label="Zamanlama biçimi"
+      >
+        {(Object.keys(SCHEDULE_KIND_LABELS) as ScheduleKind[]).map((kind) => (
+          <option key={kind} value={kind}>
+            {SCHEDULE_KIND_LABELS[kind]}
+          </option>
+        ))}
+      </select>
+
+      {draft.kind === 'INTERVAL' ? (
+        <input
+          type="number"
+          min={1}
+          max={10080}
+          value={draft.intervalMinutes ?? 60}
+          onChange={(e) => onChange({ ...draft, intervalMinutes: Number(e.target.value) })}
+          className={`${cellClass} w-28`}
+          aria-label="Dakika"
+        />
+      ) : (
+        <input
+          type="time"
+          value={draft.dailyAt ?? '09:00'}
+          onChange={(e) => onChange({ ...draft, dailyAt: e.target.value })}
+          className={`${cellClass} w-32`}
+          aria-label="Saat"
+        />
+      )}
     </div>
   );
 }

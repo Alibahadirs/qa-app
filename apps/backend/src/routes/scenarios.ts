@@ -10,10 +10,13 @@ import {
   type ParsedStep,
 } from '../lib/scenario/text.js';
 import { runScenario } from '../lib/scenario/runner.js';
+import { acquireRun, releaseRun } from '../lib/scenario/running.js';
+import { computeNextRun } from '../lib/scenario/scheduler.js';
 import {
   createScenarioSchema,
   replaceStepsSchema,
   replaceVariablesSchema,
+  scheduleSchema,
   updateScenarioSchema,
 } from '../schemas/scenario.js';
 
@@ -206,12 +209,6 @@ scenariosRouter.put(
   }),
 );
 
-/**
- * Aynı senaryonun iki kez paralel çalıştırılmasını engelleyen basit kilit
- * (test run'larındaki `run-automated` ile aynı yaklaşım).
- */
-const running = new Set<string>();
-
 /** ScenarioRun'ı adım sonuçlarıyla birlikte rapora çevirir. */
 async function loadScenarioRun(runId: string) {
   const run = await prisma.scenarioRun.findUnique({
@@ -247,16 +244,66 @@ scenariosRouter.post(
     const scenarioId = req.params.id as string;
     await loadScenario(scenarioId);
 
-    if (running.has(scenarioId)) {
+    if (!acquireRun(scenarioId)) {
       throw new HttpError(409, 'Bu senaryo için bir çalıştırma zaten sürüyor.');
     }
-    running.add(scenarioId);
     try {
       const runId = await runScenario(scenarioId);
       res.status(201).json(await loadScenarioRun(runId));
     } finally {
-      running.delete(scenarioId);
+      releaseRun(scenarioId);
     }
+  }),
+);
+
+/* ---- Faz 8B: zamanlama ---- */
+
+/** Senaryo başına en fazla bir zamanlama; yoksa null döner. */
+scenariosRouter.get(
+  '/:id/schedule',
+  asyncHandler(async (req, res) => {
+    const scenarioId = req.params.id as string;
+    await loadScenario(scenarioId);
+    res.json(await prisma.scenarioSchedule.findUnique({ where: { scenarioId } }));
+  }),
+);
+
+/**
+ * Zamanlamayı kurar veya değiştirir. `nextRunAt` her zaman **sunucuda** hesaplanır;
+ * istemcinin saatine güvenmeyiz.
+ */
+scenariosRouter.put(
+  '/:id/schedule',
+  asyncHandler(async (req, res) => {
+    const scenarioId = req.params.id as string;
+    const scenario = await loadScenario(scenarioId);
+    if (scenario.steps.length === 0) {
+      throw new HttpError(400, 'Adımı olmayan senaryo zamanlanamaz.');
+    }
+
+    const input = scheduleSchema.parse(req.body);
+    const nextRunAt = computeNextRun(input);
+    const data = { ...input, nextRunAt };
+
+    res.json(
+      await prisma.scenarioSchedule.upsert({
+        where: { scenarioId },
+        create: { ...data, scenarioId },
+        update: data,
+      }),
+    );
+  }),
+);
+
+scenariosRouter.delete(
+  '/:id/schedule',
+  asyncHandler(async (req, res) => {
+    const scenarioId = req.params.id as string;
+    if (!(await prisma.scenarioSchedule.findUnique({ where: { scenarioId } }))) {
+      throw notFound('Zamanlama', scenarioId);
+    }
+    await prisma.scenarioSchedule.delete({ where: { scenarioId } });
+    res.status(204).end();
   }),
 );
 

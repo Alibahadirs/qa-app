@@ -9,7 +9,7 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "tsx src/scripts/verifyScenarioText.ts && tsx src/scripts/verifyDiscovery.ts && tsx src/scripts/verifyScenarioRunner.ts",
+    "test": "tsx src/scripts/verifyScenarioText.ts && tsx src/scripts/verifyDiscovery.ts && tsx src/scripts/verifyScenarioRunner.ts && tsx src/scripts/verifyScheduler.ts",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:seed": "prisma db seed",

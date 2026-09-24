@@ -5,21 +5,26 @@ import type {
   ScenarioDetail,
   ScenarioRunDetail,
   ScenarioRunSummary,
+  ScenarioSchedule,
   ScenarioStepInput,
+  ScheduleInput,
   TestCase,
 } from '../api/types.js';
 import {
   RunReport,
   Section,
   StatusChip,
+  ScheduleEditor,
   StepEditor,
   VariableEditor,
+  describeSchedule,
   type VariableDraft,
 } from '../components/scenarioUi.js';
 import {
   Alert,
   EmptyState,
   Spinner,
+  dangerButton,
   inputClass,
   primaryButton,
   secondaryButton,
@@ -61,7 +66,9 @@ export function ScenarioDetailPage() {
   const [issues, setIssues] = useState<ParseIssue[]>([]);
   const [variables, setVariables] = useState<VariableDraft[]>([]);
   const [message, setMessage] = useState<string | null>(null);
-  const [busy, setBusy] = useState<null | 'save' | 'run' | 'discover' | 'variables'>(null);
+  const [busy, setBusy] = useState<
+    null | 'save' | 'run' | 'discover' | 'variables' | 'schedule'
+  >(null);
   const [discoverUrl, setDiscoverUrl] = useState('');
   const [report, setReport] = useState<ScenarioRunDetail | null>(null);
 
@@ -72,6 +79,14 @@ export function ScenarioDetailPage() {
     templateErrors?: ParseIssue[];
   } | null;
   const [templateConsumed, setTemplateConsumed] = useState(false);
+
+  const schedule = useAsync<ScenarioSchedule | null>(() => api.getSchedule(id), [id]);
+  const [scheduleDraft, setScheduleDraft] = useState<ScheduleInput>({
+    enabled: true,
+    kind: 'INTERVAL',
+    intervalMinutes: 60,
+    dailyAt: null,
+  });
 
   // Sunucudan gelen senaryo iki görünümün de kaynağıdır.
   useEffect(() => {
@@ -106,6 +121,18 @@ export function ScenarioDetailPage() {
     );
     setTemplateConsumed(true);
   }, [data, templateConsumed, templateState]);
+
+  // Kayıtlı zamanlama varsa editör onu gösterir; yoksa varsayılan taslak kalır.
+  useEffect(() => {
+    const saved = schedule.data;
+    if (!saved) return;
+    setScheduleDraft({
+      enabled: saved.enabled,
+      kind: saved.kind,
+      intervalMinutes: saved.intervalMinutes,
+      dailyAt: saved.dailyAt,
+    });
+  }, [schedule.data]);
 
   if (loading) return <Spinner />;
   if (error) return <Alert>{error}</Alert>;
@@ -161,6 +188,33 @@ export function ScenarioDetailPage() {
       fail(err, 'Değişkenler kaydedilemedi');
     } finally {
       setBusy(null);
+    }
+  };
+
+  const saveSchedule = async () => {
+    setBusy('schedule');
+    setMessage(null);
+    try {
+      await api.saveSchedule(id, scheduleDraft);
+      schedule.reload();
+      setIssues([]);
+      setMessage('Zamanlama kaydedildi.');
+    } catch (err) {
+      fail(err, 'Zamanlama kaydedilemedi');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const removeSchedule = async () => {
+    setMessage(null);
+    try {
+      await api.deleteSchedule(id);
+      schedule.reload();
+      setIssues([]);
+      setMessage('Zamanlama kaldırıldı.');
+    } catch (err) {
+      fail(err, 'Zamanlama kaldırılamadı');
     }
   };
 
@@ -453,6 +507,49 @@ export function ScenarioDetailPage() {
         </Section>
       )}
 
+      <Section
+        title="Zamanlama"
+        description="Zamanlanmış çalıştırmalar yalnızca sunucu ayaktayken tetiklenir; kapalı geçen zamanlar için sonradan koşu yapılmaz."
+        actions={
+          <div className="flex gap-2">
+            {schedule.data && (
+              <button
+                type="button"
+                onClick={() => void removeSchedule()}
+                disabled={busy !== null}
+                className={dangerButton}
+              >
+                Kaldır
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => void saveSchedule()}
+              disabled={busy !== null || data.steps.length === 0}
+              title={data.steps.length === 0 ? 'Adımı olmayan senaryo zamanlanamaz' : undefined}
+              className={primaryButton}
+              data-testid="save-schedule"
+            >
+              {busy === 'schedule' ? 'Kaydediliyor…' : 'Zamanlamayı kaydet'}
+            </button>
+          </div>
+        }
+      >
+        <div className="space-y-2">
+          <ScheduleEditor draft={scheduleDraft} onChange={setScheduleDraft} />
+          {schedule.data ? (
+            <p className="text-xs text-slate-500" data-testid="schedule-summary">
+              {describeSchedule(schedule.data)} · sıradaki:{' '}
+              {new Date(schedule.data.nextRunAt).toLocaleString('tr-TR')}
+              {schedule.data.lastRunAt &&
+                ` · son: ${new Date(schedule.data.lastRunAt).toLocaleString('tr-TR')}`}
+            </p>
+          ) : (
+            <p className="text-xs text-slate-500">Bu senaryo zamanlanmamış.</p>
+          )}
+        </div>
+      </Section>
+
       <Section title="Çalıştırma geçmişi">
         {runs.data && runs.data.length > 0 ? (
           <ul className="space-y-1 text-sm">
@@ -466,6 +563,11 @@ export function ScenarioDetailPage() {
                 >
                   {new Date(r.startedAt).toLocaleString('tr-TR')}
                 </button>
+                {r.trigger === 'SCHEDULED' && (
+                  <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-600">
+                    zamanlanmış
+                  </span>
+                )}
                 <span className="text-xs text-slate-500">
                   {r.stepCount} adım · {r.failedCount} başarısız
                   {r.selectorDrifts > 0 && ` · ${r.selectorDrifts} seçici kayması`}

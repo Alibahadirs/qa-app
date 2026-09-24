@@ -273,6 +273,7 @@ export interface ScenarioRunSummary {
   stepCount: number;
   failedCount: number;
   selectorDrifts: number;
+  trigger: RunTrigger;
 }
 
 export interface ScenarioRunDetail {
@@ -334,3 +335,30 @@ export interface TemplateApplyResult {
   warnings: string[];
   usedVariables: string[];
 }
+
+/* ---- Faz 8B: zamanlanmış çalıştırma ---- */
+
+export type ScheduleKind = 'INTERVAL' | 'DAILY';
+
+export interface ScenarioSchedule {
+  id: string;
+  scenarioId: string;
+  enabled: boolean;
+  kind: ScheduleKind;
+  /** INTERVAL için: kaç dakikada bir. */
+  intervalMinutes: number | null;
+  /** DAILY için: "HH:MM" (sunucunun yerel saati). */
+  dailyAt: string | null;
+  lastRunAt: string | null;
+  nextRunAt: string;
+}
+
+export interface ScheduleInput {
+  enabled: boolean;
+  kind: ScheduleKind;
+  intervalMinutes: number | null;
+  dailyAt: string | null;
+}
+
+/** Çalıştırmayı elle mi başlattık, zamanlayıcı mı? */
+export type RunTrigger = 'MANUAL' | 'SCHEDULED';

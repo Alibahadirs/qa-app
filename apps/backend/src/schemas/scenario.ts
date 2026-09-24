@@ -81,3 +81,29 @@ export const replaceVariablesSchema = z.object({
 
 export type CreateScenarioInput = z.infer<typeof createScenarioSchema>;
 export type UpdateScenarioInput = z.infer<typeof updateScenarioSchema>;
+
+/**
+ * Faz 8B — zamanlama. Biçime göre farklı alan zorunlu: INTERVAL dakika ister,
+ * DAILY "HH:MM" ister. Yanlış eşleşmeyi zod'da yakalayıp 400 döneriz.
+ */
+export const scheduleSchema = z
+  .object({
+    enabled: z.boolean().default(true),
+    kind: z.enum(['INTERVAL', 'DAILY']),
+    /** En az 1 dakika: daha sıkı bir aralık tarayıcı açmaya yetişemez. */
+    intervalMinutes: z.number().int().min(1).max(10_080).nullable().default(null),
+    dailyAt: z
+      .string()
+      .trim()
+      .regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Saat "HH:MM" biçiminde olmalı')
+      .nullable()
+      .default(null),
+  })
+  .refine((v) => v.kind !== 'INTERVAL' || v.intervalMinutes !== null, {
+    message: 'Aralık için dakika değeri zorunlu',
+    path: ['intervalMinutes'],
+  })
+  .refine((v) => v.kind !== 'DAILY' || v.dailyAt !== null, {
+    message: 'Günlük zamanlama için saat zorunlu',
+    path: ['dailyAt'],
+  });

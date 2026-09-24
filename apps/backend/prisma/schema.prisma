@@ -181,6 +181,7 @@ model Scenario {
   runs      ScenarioRun[]
   elements  PageElement[]
   variables ScenarioVariable[]
+  schedule  ScenarioSchedule?
 
   @@index([testCaseId])
 }
@@ -228,6 +229,8 @@ model ScenarioRun {
   scenarioId   String
   testResultId String?
   status       ResultStatus @default(NOT_RUN)
+  /// Elle mi tetiklendi, zamanlayıcı mı başlattı?
+  trigger      RunTrigger   @default(MANUAL)
   startedAt    DateTime     @default(now())
   completedAt  DateTime?
   durationMs   Int?
@@ -276,4 +279,37 @@ model ScenarioTemplate {
   text        String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+enum ScheduleKind {
+  /// Her N dakikada bir.
+  INTERVAL
+  /// Her gün belirtilen saatte (sunucunun yerel saati).
+  DAILY
+}
+
+/// Faz 8B — senaryo başına en fazla bir zamanlama.
+model ScenarioSchedule {
+  id         String       @id @default(cuid())
+  scenarioId String       @unique
+  enabled    Boolean      @default(true)
+  kind       ScheduleKind
+  /// INTERVAL için: kaç dakikada bir.
+  intervalMinutes Int?
+  /// DAILY için: "HH:MM" (sunucunun yerel saati).
+  dailyAt         String?
+  lastRunAt  DateTime?
+  /// Bir sonraki çalıştırma zamanı. Zamanlayıcı yalnızca bu alana bakar.
+  nextRunAt  DateTime
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  scenario Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+
+  @@index([enabled, nextRunAt])
+}
+
+enum RunTrigger {
+  MANUAL
+  SCHEDULED
 }

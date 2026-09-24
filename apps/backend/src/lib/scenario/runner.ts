@@ -206,6 +206,8 @@ async function captureScreenshot(page: Page, runId: string, order: number): Prom
 export interface RunScenarioOptions {
   /** Senaryo bir test run'ı içinden çalıştırıldıysa yazılacak TestResult. */
   testResultId?: string | null;
+  /** Elle mi tetiklendi, zamanlayıcı mı başlattı? */
+  trigger?: 'MANUAL' | 'SCHEDULED';
 }
 
 /** Senaryoyu çalıştırır ve oluşturulan ScenarioRun'ın id'sini döner. */
@@ -223,7 +225,12 @@ export async function runScenario(
   });
 
   const run = await prisma.scenarioRun.create({
-    data: { scenarioId, testResultId: options.testResultId ?? null, status: 'NOT_RUN' },
+    data: {
+      scenarioId,
+      testResultId: options.testResultId ?? null,
+      trigger: options.trigger ?? 'MANUAL',
+      status: 'NOT_RUN',
+    },
   });
 
   const variables = new Map(scenario.variables.map((v) => [v.name, v.value]));

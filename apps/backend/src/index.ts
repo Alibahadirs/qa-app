@@ -10,6 +10,7 @@ import { discoveryRouter } from './routes/discovery.js';
 import { scenariosRouter } from './routes/scenarios.js';
 import { statsRouter } from './routes/stats.js';
 import { templatesRouter } from './routes/templates.js';
+import { startScheduler } from './lib/scenario/scheduler.js';
 import { testRunsRouter } from './routes/testRuns.js';
 import { testSuitesRouter } from './routes/testSuites.js';
 
@@ -44,4 +45,6 @@ app.use(errorHandler);
 
 app.listen(port, () => {
   console.log(`[backend] http://localhost:${port} — health: /health`);
+  // Zamanlanmış senaryolar yalnızca backend ayaktayken çalışır; kaçanlar telafi edilmez.
+  startScheduler();
 });

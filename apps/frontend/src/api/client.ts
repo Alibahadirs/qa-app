@@ -5,8 +5,10 @@ import type {
   ScenarioRunDetail,
   ScenarioRunSummary,
   ScenarioStepInput,
+  ScenarioSchedule,
   ScenarioSummary,
   ScenarioTemplate,
+  ScheduleInput,
   Stats,
   TemplateApplyResult,
   TestCase,
@@ -238,6 +240,19 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify({ variables }),
     }),
+
+  /* ---- Faz 8B: zamanlama ---- */
+
+  getSchedule: (id: string) => request<ScenarioSchedule | null>(`/scenarios/${id}/schedule`),
+
+  saveSchedule: (id: string, input: ScheduleInput) =>
+    request<ScenarioSchedule>(`/scenarios/${id}/schedule`, {
+      method: 'PUT',
+      body: JSON.stringify(input),
+    }),
+
+  deleteSchedule: (id: string) =>
+    request<void>(`/scenarios/${id}/schedule`, { method: 'DELETE' }),
 
   /* ---- Faz 8A: şablonlar ---- */
 
