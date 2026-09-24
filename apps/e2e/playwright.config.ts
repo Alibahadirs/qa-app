@@ -7,6 +7,8 @@ import { defineConfig } from '@playwright/test';
  */
 export default defineConfig({
   testDir: './tests',
+  // Auth açıksa bir kez giriş yapılır; kapalıysa hiçbir şey yapmaz.
+  globalSetup: './tests/globalSetup.ts',
   timeout: 30_000,
   fullyParallel: false,
   retries: 0,
@@ -14,6 +16,9 @@ export default defineConfig({
   use: {
     baseURL: process.env.E2E_BASE_URL ?? 'http://localhost:5173',
     headless: true,
+    ...(process.env.E2E_AUTH_PASSWORD
+      ? { storageState: 'playwright/.auth/state.json' }
+      : {}),
     screenshot: 'only-on-failure',
     // Tarayıcıların önceden kurulu olduğu ortamlar (CI imajı, Docker) için
     // opsiyonel override; boşsa Playwright kendi indirdiği tarayıcıyı kullanır.
