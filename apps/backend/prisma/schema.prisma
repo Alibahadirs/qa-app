@@ -264,3 +264,16 @@ model StepResult {
 
   @@index([scenarioRunId, order])
 }
+
+/// Faz 8A — yeniden kullanılabilir senaryo gövdesi.
+/// Şablon, adımları değil **metin dilindeki gövdeyi** saklar: adımlar element id'lerine
+/// bağlıdır ve id'ler senaryoya özeldir, oysa metin etiketlere dayanır ve taşınabilir.
+model ScenarioTemplate {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  /// Metin dilindeki senaryo gövdesi ({{degisken}} yer tutucularıyla birlikte).
+  text        String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

@@ -30,6 +30,9 @@ export function Layout({ onLogout }: { onLogout?: () => void }) {
             <NavLink to="/scenarios" className={linkClass}>
               Senaryolar
             </NavLink>
+            <NavLink to="/scenario-templates" className={linkClass}>
+              Şablonlar
+            </NavLink>
             {onLogout && (
               <button
                 type="button"

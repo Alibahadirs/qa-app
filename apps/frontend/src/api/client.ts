@@ -6,7 +6,9 @@ import type {
   ScenarioRunSummary,
   ScenarioStepInput,
   ScenarioSummary,
+  ScenarioTemplate,
   Stats,
+  TemplateApplyResult,
   TestCase,
   TestCaseFilters,
   TestCaseInput,
@@ -235,6 +237,46 @@ export const api = {
     request<ScenarioDetail>(`/scenarios/${id}/variables`, {
       method: 'PUT',
       body: JSON.stringify({ variables }),
+    }),
+
+  /* ---- Faz 8A: şablonlar ---- */
+
+  listTemplates: () => request<ScenarioTemplate[]>('/scenario-templates'),
+
+  createTemplate: (input: { name: string; description?: string; text: string }) =>
+    request<ScenarioTemplate>('/scenario-templates', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
+
+  /** Mevcut senaryonun gövdesini şablona çevirir. */
+  createTemplateFromScenario: (input: {
+    scenarioId: string;
+    name: string;
+    description?: string;
+  }) =>
+    request<ScenarioTemplate>('/scenario-templates/from-scenario', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
+
+  updateTemplate: (id: string, input: { name?: string; description?: string; text?: string }) =>
+    request<ScenarioTemplate>(`/scenario-templates/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(input),
+    }),
+
+  deleteTemplate: (id: string) =>
+    request<void>(`/scenario-templates/${id}`, { method: 'DELETE' }),
+
+  /** Şablondan senaryo kurar; adres taranır ve metin yeni kataloğa göre çözülür. */
+  applyTemplate: (
+    id: string,
+    input: { name: string; baseUrl: string; testCaseId?: string | null },
+  ) =>
+    request<TemplateApplyResult>(`/scenario-templates/${id}/apply`, {
+      method: 'POST',
+      body: JSON.stringify(input),
     }),
 
   runScenario: (id: string) =>

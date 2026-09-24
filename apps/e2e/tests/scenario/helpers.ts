@@ -21,6 +21,20 @@ export async function deleteScenarioByName(name: string): Promise<void> {
   }
 }
 
+/** Şablonlar senaryodan bağımsız yaşar; test sonunda ayrıca silinmeleri gerekir. */
+export async function deleteTemplateByName(name: string): Promise<void> {
+  const response = await fetch(`${API}/scenario-templates`);
+  if (!response.ok) return;
+  const body: unknown = await response.json();
+  const rows = (Array.isArray(body) ? body : ((body as { data?: unknown[] }).data ?? [])) as {
+    id: string;
+    name: string;
+  }[];
+  for (const row of rows.filter((r) => r.name === name)) {
+    await fetch(`${API}/scenario-templates/${row.id}`, { method: 'DELETE' });
+  }
+}
+
 /** Senaryonun sunucudaki hâli — gizli değerin sızmadığını doğrulamak için. */
 export async function fetchScenarioByName(name: string): Promise<{
   id: string;

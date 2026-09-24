@@ -308,3 +308,29 @@ export interface DiscoveryResponse {
   count: number;
   elements: DiscoveredElement[];
 }
+
+/* ---- Faz 8A: senaryo şablonları ---- */
+
+export interface ScenarioTemplate {
+  id: string;
+  name: string;
+  description: string | null;
+  /** Metin dilindeki senaryo gövdesi. */
+  text: string;
+  createdAt: string;
+  updatedAt: string;
+  stepCount: number;
+  usedVariables: string[];
+}
+
+/** Şablonun bir adrese uygulanma sonucu. */
+export interface TemplateApplyResult {
+  scenarioId: string;
+  elementCount: number;
+  /** false ise etiketler tutmadı: senaryo adımsız doğdu, metin editöre düşer. */
+  applied: boolean;
+  text: string;
+  errors: { line: number; message: string }[];
+  warnings: string[];
+  usedVariables: string[];
+}

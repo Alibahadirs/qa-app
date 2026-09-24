@@ -9,6 +9,7 @@ import { authRouter } from './routes/auth.js';
 import { discoveryRouter } from './routes/discovery.js';
 import { scenariosRouter } from './routes/scenarios.js';
 import { statsRouter } from './routes/stats.js';
+import { templatesRouter } from './routes/templates.js';
 import { testRunsRouter } from './routes/testRuns.js';
 import { testSuitesRouter } from './routes/testSuites.js';
 
@@ -33,6 +34,7 @@ app.use('/test-runs', testRunsRouter);
 app.use('/stats', statsRouter);
 app.use('/discovery', discoveryRouter);
 app.use('/scenarios', scenariosRouter);
+app.use('/scenario-templates', templatesRouter);
 
 app.use((_req, res) => {
   res.status(404).json({ error: 'Endpoint bulunamadı' });

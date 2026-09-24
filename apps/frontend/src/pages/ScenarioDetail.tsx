@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import { ApiError, api, resolveUploadUrl } from '../api/client.js';
 import type {
   ScenarioDetail,
@@ -65,6 +65,14 @@ export function ScenarioDetailPage() {
   const [discoverUrl, setDiscoverUrl] = useState('');
   const [report, setReport] = useState<ScenarioRunDetail | null>(null);
 
+  // Şablondan kurulan senaryo, uygulanamayan metni sayfa durumunda taşır (Faz 8A).
+  const location = useLocation();
+  const templateState = location.state as {
+    templateText?: string;
+    templateErrors?: ParseIssue[];
+  } | null;
+  const [templateConsumed, setTemplateConsumed] = useState(false);
+
   // Sunucudan gelen senaryo iki görünümün de kaynağıdır.
   useEffect(() => {
     if (!data) return;
@@ -84,6 +92,20 @@ export function ScenarioDetailPage() {
       .map<VariableDraft>((name) => ({ name, value: '', secret: false }));
     setVariables([...stored, ...missing]);
   }, [data]);
+
+  // Şablon bu sayfanın kataloğuna uymadan kurulduysa metin editöre düşer. Yukarıdaki
+  // efektten SONRA çalışmalı: o, sunucudaki (boş) metni yazıyor.
+  useEffect(() => {
+    if (!data || templateConsumed || !templateState?.templateText) return;
+    setMode('text');
+    setText(templateState.templateText);
+    setIssues(templateState.templateErrors ?? []);
+    setMessage(
+      'Şablon metni bu sayfanın kataloğuna uymadı. Etiketleri düzeltip kaydedin; ' +
+        'gereken sayfaları "Sayfayı tara" ile kataloglayabilirsiniz.',
+    );
+    setTemplateConsumed(true);
+  }, [data, templateConsumed, templateState]);
 
   if (loading) return <Spinner />;
   if (error) return <Alert>{error}</Alert>;
@@ -139,6 +161,20 @@ export function ScenarioDetailPage() {
       fail(err, 'Değişkenler kaydedilemedi');
     } finally {
       setBusy(null);
+    }
+  };
+
+  /** Senaryonun gövdesini şablona çevirir; adımlar metne dönüştüğü için taşınabilir olur. */
+  const saveAsTemplate = async () => {
+    const name = window.prompt('Şablon adı', data.name);
+    if (name === null || name.trim() === '') return;
+    setMessage(null);
+    try {
+      await api.createTemplateFromScenario({ scenarioId: id, name: name.trim() });
+      setIssues([]);
+      setMessage(`"${name.trim()}" şablonu kaydedildi.`);
+    } catch (err) {
+      fail(err, 'Şablon kaydedilemedi');
     }
   };
 
@@ -229,6 +265,20 @@ export function ScenarioDetailPage() {
         description="Aynı senaryo hem form hem metin olarak düzenlenebilir; ikisi arasında kayıpsız geçilir."
         actions={
           <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => void saveAsTemplate()}
+              disabled={busy !== null || data.steps.length === 0}
+              title={
+                data.steps.length === 0
+                  ? 'Adımı olmayan senaryodan şablon çıkarılamaz'
+                  : undefined
+              }
+              className={secondaryButton}
+              data-testid="save-as-template"
+            >
+              Şablon olarak kaydet
+            </button>
             <button
               type="button"
               onClick={() => {
