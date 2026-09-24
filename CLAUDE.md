@@ -153,6 +153,58 @@ ayrı bir değişken deposunda tutulur.
 **Çıktı:** Bir URL verip arayüzden senaryo kurabiliyor, tek tıkla çalıştırıp hangi adımda
 ne olduğunu ekran görüntüsüyle görebiliyorum.
 
+### Faz 7 sonrası cila (tamamlandı)
+
+Faz 7 bittikten sonra uygulama uçtan uca elle denendi ve çıkan eksikler kapatıldı:
+
+- **Değişken deposu arayüzü.** Backend ucu vardı ama hiçbir bileşen çağırmıyordu; yani
+  `{{sifre}}` kullanan senaryo arayüzden çalıştırılamıyordu. Artık düzenlenebilir.
+  Gizli değerler istemciye hiç gönderilmediği için `value` alanı opsiyonel:
+  gönderilmeyen değişkenin saklı değeri korunur.
+- **Katalog hatası yol gösterir.** Hedef henüz taranmamış bir sayfadaysa mesaj
+  "…elementin bulunduğu adresi *Sayfayı tara* ile kataloglayın" der.
+- **Doğrulama uyarısı belirgin.** Nötr bilgi değil sarı uyarı; senaryo listesinde de
+  "⚠ doğrulama yok" rozeti (ilke 3).
+- **Seçici kayması toplu raporu.** Kayma tek bir koşu raporuna gömülü kalmıyor,
+  dashboard'da ayrı kart olarak toplanıyor (ilke 2).
+
+### Faz 8 — Şablonlar, zamanlama, çoklu tarayıcı, görünürlük (tamamlandı)
+
+- **8A — Senaryo şablonları.** `ScenarioTemplate` adımları değil **metin dilindeki
+  gövdeyi** saklar: adımlar element id'lerine bağlıdır ve id'ler senaryoya özeldir,
+  oysa metin etiketlere dayanır ve taşınabilir. "Şablon olarak kaydet" ve "Şablondan
+  senaryo kur" (adres taranır, sonra metin yeni kataloğa göre çözülür).
+  *Kabul edilen kısıt:* şablon etiketlere dayandığı için her sayfada tutmaz. Tutmazsa
+  senaryo adımsız kurulur ve metin, satır numaralı hatalarıyla editöre düşer — bu bir
+  hata değil, tasarlanmış davranıştır.
+- **8B — Zamanlanmış çalıştırma.** Paket eklenmeden, dakikada bir tetiklenen tek bir
+  tick. İki biçim: "her N dakikada" ve "her gün HH:MM" (cron ifadesi yok).
+  `ScenarioRun.trigger` elle/zamanlanmış ayrımını taşır. Çalıştırma kilidi paylaşılır,
+  zamanlayıcı kullanıcının başlattığı koşunun üstüne binmez.
+  *Kabul edilen sınırlar:* yalnız backend ayaktayken çalışır, **kaçan koşular telafi
+  edilmez**, kilit süreç içi olduğu için **tek backend örneği** varsayar.
+- **8C — Çoklu tarayıcı.** Chromium / Firefox / WebKit. Adımlarda değişiklik
+  gerekmedi; seçiciler zaten motor bağımsız üretiliyor. Tarayıcı kurulu değilse koşu
+  BLOCKED olur ve hata mesajı kurulum komutunu verir. Zamanlama da tarayıcı taşır.
+- **8D — Görünürlük.** Zamanlanmış koşular arka planda düşebildiği için sonuç tek
+  yerde toplanır: dashboard'da "Senaryo sağlığı" kartı (son koşusu başarısız olan
+  senaryolar, hangi adımda düştüğü), senaryo listesinde son koşu + zamanlama özeti,
+  ve `/scenarios/schedules` sayfasında sıradaki koşular.
+
+### Test kapsaması (sürdürülmeli)
+
+Faz 7 ve 8 akışları `apps/e2e/tests/scenario/` altında regresyona karşı kapalı.
+Yeni bir özellik eklerken buraya da test yazılır.
+
+- `demoSite.ts` — testin kendi sürecinde ayağa kalkan hedef site. "drift" anahtarı
+  butonun görünen adını değiştirip `data-testid`'i bırakır, böylece kademeli seçici
+  düşme gerçek bir sayfa değişikliğiyle sınanır.
+- `helpers.ts` — senaryo kurma/tarama/metin yazma/çalıştırma + API'den temizlik.
+  Her spec kendi verisini `afterAll`'da siler.
+- `globalSetup.ts` — auth açıkken bir kez giriş yapıp oturumu saklar.
+- Backend tarafında `apps/backend/src/scripts/verify*.ts` betikleri gerçek tarayıcı ve
+  gerçek veritabanıyla çalışır (`pnpm --filter @qa-app/backend test`).
+
 ## 5. Kullanım Talimatı
 
 1. Bu dosya proje kökünde `CLAUDE.md` olarak durur; Claude Code her session'da otomatik okur.
@@ -160,3 +212,106 @@ ne olduğunu ekran görüntüsüyle görebiliyorum.
 3. Faz bitince özeti kontrol et, `/clear` çalıştır.
 4. Sıradaki session'da: "CLAUDE.md'yi oku. Faz 1'i uygula." şeklinde devam et.
 5. Bir faz çok büyük gelirse ("Faz 3'ü A ve B alt adımına böl, önce A'yı yap" gibi) daha küçük parçalara ayır.
+
+## 6. Uygulamayı Ayağa Kaldırma
+
+### İlk kurulum (bir kez)
+
+```bash
+pnpm install
+cp apps/backend/.env.example apps/backend/.env
+pnpm --filter @qa-app/backend db:generate   # Prisma client üret
+pnpm --filter @qa-app/backend db:push       # şemayı veritabanına yaz
+pnpm --filter @qa-app/backend db:seed       # örnek veri (opsiyonel)
+
+# Senaryo çalıştırma ve element keşfi için tarayıcılar
+pnpm --filter @qa-app/e2e exec playwright install chromium firefox webkit
+```
+
+> Prisma 7 bağlantı URL'ini şemadan değil `apps/backend/prisma.config.ts` üzerinden
+> okur. `apps/backend/.env` olmadan hiçbir db komutu çalışmaz.
+>
+> Yalnız Chromium kullanacaksan `chromium` yeterli; Firefox/WebKit seçildiğinde koşu
+> "kurulu değil" mesajıyla BLOCKED olur, sessizce patlamaz.
+
+### Geliştirme
+
+```bash
+pnpm dev            # backend (:3001) + frontend (:5173)
+pnpm typecheck      # üç paketin tip kontrolü
+pnpm --filter @qa-app/backend test                 # gerçek tarayıcılı doğrulama betikleri
+pnpm --filter @qa-app/e2e exec playwright test     # arayüz testleri
+```
+
+Auth açıksa (aşağıya bak) e2e testleri parolayı `E2E_AUTH_PASSWORD` ile ister:
+
+```bash
+E2E_AUTH_PASSWORD=<parola> pnpm --filter @qa-app/e2e exec playwright test
+```
+
+**Windows'ta dikkat:** `pnpm dev` durdurulduğunda alt süreçler bazen hayatta kalır;
+eski backend 3001'i tutar, yeni frontend 5174'e kaçar ve testler bayat sayfaya bakar.
+Tuhaf hatalar alırsan önce portları kontrol et:
+
+```powershell
+Get-NetTCPConnection -LocalPort 5173,3001 -State Listen |
+  ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }
+```
+
+### Kimlik doğrulama
+
+`apps/backend/.env` içinde `AUTH_PASSWORD` **doluysa** uygulama takım parolası ister,
+**boşsa** auth tamamen kapalıdır (yerel geliştirme kolaylığı).
+
+```bash
+AUTH_PASSWORD=uzun-ve-tahmin-edilemez-bir-parola
+SESSION_SECRET=<openssl rand -hex 32 çıktısı>   # yoksa her restart'ta oturumlar düşer
+```
+
+Tek paylaşılan parola modelidir; kullanıcı bazlı yetkilendirme yoktur.
+
+## 7. Yayına Alma (Production)
+
+`pnpm build` iki çıktı üretir: `apps/backend/dist` (Node) ve `apps/frontend/dist`
+(statik dosyalar). Backend `node dist/index.js` ile çalışır.
+
+### Zorunlu adımlar
+
+1. **Ortam değişkenleri** (`apps/backend/.env` ya da dağıtım ortamının kendi mekanizması):
+   - `AUTH_PASSWORD` — **boş bırakılırsa uygulama herkese açık olur.**
+   - `SESSION_SECRET` — tanımlı değilse her yeniden başlatmada oturumlar düşer.
+   - `NODE_ENV=production` — oturum cookie'si ancak bu değerle `secure` olur.
+   - `DATABASE_URL`, `PORT`.
+2. **Frontend'i sunacak bir web sunucusu.** Backend statik dosya servis etmiyor ve
+   arayüz API'yi `/api/*` üzerinden çağırıyor. Vite'ın proxy'si **yalnızca dev
+   modunda** çalışır. Üretimde nginx/Caddy gibi bir sunucu şu eşlemeyi yapmalı:
+   - `/` → `apps/frontend/dist`
+   - `/api/*` → backend (ön ek düşürülerek: `/api/scenarios` → `:3001/scenarios`)
+   - `/uploads/*` → backend (ekran görüntüleri)
+   Aynı origin'den servis etmek şart: oturum cookie'si `sameSite: lax` ve backend'de
+   `cors()` credentials'a izin vermiyor, yani ayrı domainlerde oturum taşınmaz.
+3. **Playwright tarayıcıları sunucuya kurulmalı**, sistem bağımlılıklarıyla birlikte:
+   `npx playwright install --with-deps chromium firefox webkit`. Kurulu değilse
+   senaryo çalıştırma ve element keşfi çalışmaz.
+4. **`apps/backend/uploads/` kalıcı olmalı.** Ekran görüntüleri diske yazılır;
+   konteynerde efemer bir katmana denk gelirse her dağıtımda kaybolur.
+5. **Tek backend örneği çalıştır.** Zamanlayıcının çalıştırma kilidi süreç içidir
+   (`lib/scenario/running.ts`); iki örnek aynı senaryoyu aynı anda koşturabilir.
+   Yatay ölçekleme gerekirse kilit önce veritabanına taşınmalı.
+
+### Bilinen eksikler (yayına almadan önce karar ver)
+
+- **Migration yok.** `prisma.config.ts` bir `prisma/migrations` yolu tanımlıyor ama
+  klasör hiç oluşmadı; şema bugüne dek hep `prisma db push` ile uygulandı. Bu, üretim
+  verisi için güvenli değildir (kolon silme/yeniden adlandırmada sessiz veri kaybı).
+  Kalıcı bir kurulum öncesi `prisma migrate dev` ile ilk migration üretilmeli.
+- **SQLite tek makineye bağlar.** Postgres'e geçişte üç yer değişir:
+  `prisma/schema.prisma` içindeki `datasource provider`, `src/db.ts` içindeki
+  `PrismaBetterSqlite3` adapter'ı ve `src/lib/json.ts` (SQLite dizi tutamadığı için
+  `steps`/`tags` alanlarını JSON string'e çeviren yer — Postgres'te native `String[]`
+  olur ve bu dosya tamamen kalkar).
+- **`cors()` her origin'e açık.** Aynı origin'den servis ediliyorsa zararsız, ama
+  API'yi doğrudan dışarı açacaksan daraltılmalı.
+- **Kaba kuvvet koruması yok.** Girişte sabit 300 ms gecikme var; oran sınırlama yok.
+- **Zamanlanmış koşular yalnız sunucu ayaktayken çalışır**, kaçanlar telafi edilmez.
+
