@@ -92,6 +92,7 @@ export const scheduleSchema = z
     kind: z.enum(['INTERVAL', 'DAILY']),
     /** En az 1 dakika: daha sıkı bir aralık tarayıcı açmaya yetişemez. */
     intervalMinutes: z.number().int().min(1).max(10_080).nullable().default(null),
+    browser: z.enum(['CHROMIUM', 'FIREFOX', 'WEBKIT']).default('CHROMIUM'),
     dailyAt: z
       .string()
       .trim()
@@ -107,3 +108,10 @@ export const scheduleSchema = z
     message: 'Günlük zamanlama için saat zorunlu',
     path: ['dailyAt'],
   });
+
+/** Faz 8C — çalıştırmanın hangi tarayıcıda açılacağı. */
+export const browserSchema = z.enum(['CHROMIUM', 'FIREFOX', 'WEBKIT']);
+
+export const runScenarioSchema = z.object({
+  browser: browserSchema.default('CHROMIUM'),
+});

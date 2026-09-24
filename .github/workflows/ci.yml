@@ -61,7 +61,7 @@ jobs:
           pnpm --filter @qa-app/backend db:seed
 
       - name: Playwright tarayıcısını kur
-        run: pnpm --filter @qa-app/e2e exec playwright install --with-deps chromium
+        run: pnpm --filter @qa-app/e2e exec playwright install --with-deps chromium firefox webkit
 
       - name: Sunucuları başlat
         run: |

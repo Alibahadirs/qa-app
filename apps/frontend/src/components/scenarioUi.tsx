@@ -3,6 +3,9 @@ import {
   STEP_ACTIONS,
   STEP_ACTION_LABELS,
   type ResultStatus,
+  BROWSERS,
+  BROWSER_LABELS,
+  type BrowserName,
   type ScenarioElement,
   type ScenarioSchedule,
   type ScheduleInput,
@@ -394,7 +397,8 @@ export function describeSchedule(schedule: ScenarioSchedule): string {
     schedule.kind === 'INTERVAL'
       ? `her ${schedule.intervalMinutes} dakikada bir`
       : `her gün ${schedule.dailyAt}`;
-  return schedule.enabled ? what : `${what} (kapalı)`;
+  const where = ` · ${BROWSER_LABELS[schedule.browser]}`;
+  return schedule.enabled ? `${what}${where}` : `${what}${where} (kapalı)`;
 }
 
 export function ScheduleEditor({
@@ -434,6 +438,19 @@ export function ScheduleEditor({
         {(Object.keys(SCHEDULE_KIND_LABELS) as ScheduleKind[]).map((kind) => (
           <option key={kind} value={kind}>
             {SCHEDULE_KIND_LABELS[kind]}
+          </option>
+        ))}
+      </select>
+
+      <select
+        value={draft.browser}
+        onChange={(e) => onChange({ ...draft, browser: e.target.value as BrowserName })}
+        className={`${cellClass} w-36`}
+        aria-label="Zamanlama tarayıcısı"
+      >
+        {BROWSERS.map((b) => (
+          <option key={b} value={b}>
+            {BROWSER_LABELS[b]}
           </option>
         ))}
       </select>

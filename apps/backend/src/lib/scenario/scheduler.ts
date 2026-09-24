@@ -79,7 +79,10 @@ export async function runDueSchedules(now: Date = new Date()): Promise<number> {
     });
 
     try {
-      await runScenario(schedule.scenarioId, { trigger: 'SCHEDULED' });
+      await runScenario(schedule.scenarioId, {
+        trigger: 'SCHEDULED',
+        browser: schedule.browser,
+      });
       started += 1;
     } catch (error) {
       // Zamanlayıcı bir koşu yüzünden ölmemeli; hata koşunun kendisinde kayıtlı.

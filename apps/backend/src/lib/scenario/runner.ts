@@ -13,7 +13,7 @@
  */
 import { randomBytes } from 'node:crypto';
 import { join } from 'node:path';
-import { chromium, type Locator, type Page } from 'playwright';
+import { chromium, firefox, webkit, type Browser, type Locator, type Page } from 'playwright';
 import { prisma } from '../../db.js';
 import { saveDiscoveredElements, normalizeUrl } from '../discovery/catalog.js';
 import { discoverOnPage } from '../discovery/discover.js';
@@ -203,11 +203,30 @@ async function captureScreenshot(page: Page, runId: string, order: number): Prom
   }
 }
 
+export type BrowserName = 'CHROMIUM' | 'FIREFOX' | 'WEBKIT';
+
+export const BROWSER_LABELS: Record<BrowserName, string> = {
+  CHROMIUM: 'Chromium',
+  FIREFOX: 'Firefox',
+  WEBKIT: 'WebKit',
+};
+
+/**
+ * Aynı senaryo üç motorda da koşabilir. Seçiciler motor bağımsız olduğu için
+ * (getByRole/getByTestId/…) adımlarda değişiklik gerekmez; fark yalnızca burada.
+ */
+function launchBrowser(name: BrowserName): Promise<Browser> {
+  const engines = { CHROMIUM: chromium, FIREFOX: firefox, WEBKIT: webkit };
+  return engines[name].launch();
+}
+
 export interface RunScenarioOptions {
   /** Senaryo bir test run'ı içinden çalıştırıldıysa yazılacak TestResult. */
   testResultId?: string | null;
   /** Elle mi tetiklendi, zamanlayıcı mı başlattı? */
   trigger?: 'MANUAL' | 'SCHEDULED';
+  /** Hangi tarayıcıda koşacak (varsayılan: Chromium). */
+  browser?: BrowserName;
 }
 
 /** Senaryoyu çalıştırır ve oluşturulan ScenarioRun'ın id'sini döner. */
@@ -224,11 +243,14 @@ export async function runScenario(
     },
   });
 
+  const browserName: BrowserName = options.browser ?? 'CHROMIUM';
+
   const run = await prisma.scenarioRun.create({
     data: {
       scenarioId,
       testResultId: options.testResultId ?? null,
       trigger: options.trigger ?? 'MANUAL',
+      browser: browserName,
       status: 'NOT_RUN',
     },
   });
@@ -250,7 +272,26 @@ export async function runScenario(
     return run.id;
   }
 
-  const browser = await chromium.launch();
+  let browser: Browser;
+  try {
+    browser = await launchBrowser(browserName);
+  } catch (error) {
+    // En sık sebep: tarayıcı indirilmemiş. Sessizce patlamak yerine yolu söyleriz.
+    await prisma.scenarioRun.update({
+      where: { id: run.id },
+      data: {
+        status: 'BLOCKED',
+        completedAt: new Date(),
+        durationMs: Date.now() - startedAt,
+        error:
+          `${BROWSER_LABELS[browserName]} başlatılamadı. Kurulu değilse: ` +
+          `pnpm --filter @qa-app/backend exec playwright install ${browserName.toLowerCase()} — ` +
+          (error instanceof Error ? (error.message.split('\n')[0] ?? '') : String(error)),
+      },
+    });
+    return run.id;
+  }
+
   let runStatus: StepStatus = 'PASS';
   let runError: string | null = null;
 

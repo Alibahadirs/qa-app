@@ -1,4 +1,5 @@
 import type {
+  BrowserName,
   DiscoveryResponse,
   ResultStatus,
   ScenarioDetail,
@@ -294,8 +295,11 @@ export const api = {
       body: JSON.stringify(input),
     }),
 
-  runScenario: (id: string) =>
-    request<ScenarioRunDetail>(`/scenarios/${id}/run`, { method: 'POST' }),
+  runScenario: (id: string, browser: BrowserName = 'CHROMIUM') =>
+    request<ScenarioRunDetail>(`/scenarios/${id}/run`, {
+      method: 'POST',
+      body: JSON.stringify({ browser }),
+    }),
 
   listScenarioRuns: (id: string) => request<ScenarioRunSummary[]>(`/scenarios/${id}/runs`),
 

@@ -231,6 +231,7 @@ model ScenarioRun {
   status       ResultStatus @default(NOT_RUN)
   /// Elle mi tetiklendi, zamanlayıcı mı başlattı?
   trigger      RunTrigger   @default(MANUAL)
+  browser      BrowserName  @default(CHROMIUM)
   startedAt    DateTime     @default(now())
   completedAt  DateTime?
   durationMs   Int?
@@ -298,6 +299,8 @@ model ScenarioSchedule {
   intervalMinutes Int?
   /// DAILY için: "HH:MM" (sunucunun yerel saati).
   dailyAt         String?
+  /// Zamanlanmış koşunun hangi tarayıcıda açılacağı.
+  browser    BrowserName  @default(CHROMIUM)
   lastRunAt  DateTime?
   /// Bir sonraki çalıştırma zamanı. Zamanlayıcı yalnızca bu alana bakar.
   nextRunAt  DateTime
@@ -307,6 +310,13 @@ model ScenarioSchedule {
   scenario Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
 
   @@index([enabled, nextRunAt])
+}
+
+/// Faz 8C — senaryonun hangi tarayıcıda koştuğu.
+enum BrowserName {
+  CHROMIUM
+  FIREFOX
+  WEBKIT
 }
 
 enum RunTrigger {

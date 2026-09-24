@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { ApiError, api, resolveUploadUrl } from '../api/client.js';
+import {
+  BROWSERS,
+  BROWSER_LABELS,
+  type BrowserName,
+} from '../api/types.js';
 import type {
   ScenarioDetail,
   ScenarioRunDetail,
@@ -71,6 +76,7 @@ export function ScenarioDetailPage() {
   >(null);
   const [discoverUrl, setDiscoverUrl] = useState('');
   const [report, setReport] = useState<ScenarioRunDetail | null>(null);
+  const [browser, setBrowser] = useState<BrowserName>('CHROMIUM');
 
   // Şablondan kurulan senaryo, uygulanamayan metni sayfa durumunda taşır (Faz 8A).
   const location = useLocation();
@@ -86,6 +92,7 @@ export function ScenarioDetailPage() {
     kind: 'INTERVAL',
     intervalMinutes: 60,
     dailyAt: null,
+    browser: 'CHROMIUM',
   });
 
   // Sunucudan gelen senaryo iki görünümün de kaynağıdır.
@@ -131,6 +138,7 @@ export function ScenarioDetailPage() {
       kind: saved.kind,
       intervalMinutes: saved.intervalMinutes,
       dailyAt: saved.dailyAt,
+      browser: saved.browser,
     });
   }, [schedule.data]);
 
@@ -250,7 +258,7 @@ export function ScenarioDetailPage() {
     setBusy('run');
     setMessage(null);
     try {
-      setReport(await api.runScenario(id));
+      setReport(await api.runScenario(id, browser));
       runs.reload();
     } catch (err) {
       fail(err, 'Çalıştırılamadı');
@@ -285,15 +293,30 @@ export function ScenarioDetailPage() {
           <h2 className="text-xl font-semibold">{data.name}</h2>
           <p className="truncate text-sm text-slate-500">{data.baseUrl}</p>
         </div>
-        <button
-          type="button"
-          onClick={() => void run()}
-          disabled={busy !== null}
-          className={primaryButton}
-          data-testid="run-scenario"
-        >
-          {busy === 'run' ? 'Çalışıyor…' : '▶ Çalıştır'}
-        </button>
+        <div className="flex items-center gap-2">
+          <select
+            value={browser}
+            onChange={(e) => setBrowser(e.target.value as BrowserName)}
+            disabled={busy !== null}
+            className={`${inputClass} w-36`}
+            aria-label="Tarayıcı"
+          >
+            {BROWSERS.map((b) => (
+              <option key={b} value={b}>
+                {BROWSER_LABELS[b]}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={() => void run()}
+            disabled={busy !== null}
+            className={primaryButton}
+            data-testid="run-scenario"
+          >
+            {busy === 'run' ? 'Çalışıyor…' : '▶ Çalıştır'}
+          </button>
+        </div>
       </div>
 
       {message && <Alert kind={issues.length > 0 ? 'error' : 'info'}>{message}</Alert>}
@@ -499,7 +522,7 @@ export function ScenarioDetailPage() {
       {report && (
         <Section
           title="Çalıştırma raporu"
-          description={`${report.summary.passed}/${report.summary.total} adım geçti · ${report.summary.selectorDrifts} seçici kayması`}
+          description={`${BROWSER_LABELS[report.browser]} · ${report.summary.passed}/${report.summary.total} adım geçti · ${report.summary.selectorDrifts} seçici kayması`}
           actions={<StatusChip status={report.status} />}
         >
           {report.error && <Alert>{report.error}</Alert>}

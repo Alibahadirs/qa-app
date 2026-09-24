@@ -16,6 +16,7 @@ import {
   createScenarioSchema,
   replaceStepsSchema,
   replaceVariablesSchema,
+  runScenarioSchema,
   scheduleSchema,
   updateScenarioSchema,
 } from '../schemas/scenario.js';
@@ -244,11 +245,14 @@ scenariosRouter.post(
     const scenarioId = req.params.id as string;
     await loadScenario(scenarioId);
 
+    // Gövde boş gelebilir (eski istemciler): varsayılan Chromium.
+    const { browser } = runScenarioSchema.parse(req.body ?? {});
+
     if (!acquireRun(scenarioId)) {
       throw new HttpError(409, 'Bu senaryo için bir çalıştırma zaten sürüyor.');
     }
     try {
-      const runId = await runScenario(scenarioId);
+      const runId = await runScenario(scenarioId, { browser });
       res.status(201).json(await loadScenarioRun(runId));
     } finally {
       releaseRun(scenarioId);

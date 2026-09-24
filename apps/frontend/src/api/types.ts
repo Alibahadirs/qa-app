@@ -274,6 +274,7 @@ export interface ScenarioRunSummary {
   failedCount: number;
   selectorDrifts: number;
   trigger: RunTrigger;
+  browser: BrowserName;
 }
 
 export interface ScenarioRunDetail {
@@ -284,6 +285,7 @@ export interface ScenarioRunDetail {
   completedAt: string | null;
   durationMs: number | null;
   error: string | null;
+  browser: BrowserName;
   steps: StepResult[];
   summary: {
     total: number;
@@ -349,6 +351,7 @@ export interface ScenarioSchedule {
   intervalMinutes: number | null;
   /** DAILY için: "HH:MM" (sunucunun yerel saati). */
   dailyAt: string | null;
+  browser: BrowserName;
   lastRunAt: string | null;
   nextRunAt: string;
 }
@@ -358,7 +361,19 @@ export interface ScheduleInput {
   kind: ScheduleKind;
   intervalMinutes: number | null;
   dailyAt: string | null;
+  browser: BrowserName;
 }
 
 /** Çalıştırmayı elle mi başlattık, zamanlayıcı mı? */
 export type RunTrigger = 'MANUAL' | 'SCHEDULED';
+
+/* ---- Faz 8C: çoklu tarayıcı ---- */
+
+export const BROWSERS = ['CHROMIUM', 'FIREFOX', 'WEBKIT'] as const;
+export type BrowserName = (typeof BROWSERS)[number];
+
+export const BROWSER_LABELS: Record<BrowserName, string> = {
+  CHROMIUM: 'Chromium',
+  FIREFOX: 'Firefox',
+  WEBKIT: 'WebKit',
+};
