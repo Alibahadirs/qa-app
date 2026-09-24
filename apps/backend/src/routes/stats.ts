@@ -7,6 +7,46 @@ export const statsRouter = Router();
 const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] as const;
 const RESULT_KEYS = ['PASS', 'FAIL', 'BLOCKED', 'SKIPPED', 'NOT_RUN'] as const;
 
+/**
+ * Seçici kayması toplu raporu: her senaryonun **son** çalıştırmasına bakılır ve ilk aday
+ * dışında bir adayla bulunan adımlar toplanır. Kayma, sayfanın değiştiğinin erken
+ * habercisidir; tek bir rapora gömülü kalmasın diye dashboard'a taşınır.
+ */
+async function selectorDriftReport() {
+  const scenarios = await prisma.scenario.findMany({
+    select: {
+      id: true,
+      name: true,
+      runs: {
+        orderBy: { startedAt: 'desc' },
+        take: 1,
+        select: {
+          startedAt: true,
+          steps: { select: { description: true, usedSelectorIndex: true }, orderBy: { order: 'asc' } },
+        },
+      },
+    },
+  });
+
+  const drifting = scenarios
+    .map(({ id, name, runs }) => {
+      const lastRun = runs[0];
+      if (!lastRun) return null;
+      const steps = lastRun.steps
+        .filter((s) => s.usedSelectorIndex !== null && s.usedSelectorIndex > 0)
+        .map((s) => ({ description: s.description, usedSelectorIndex: s.usedSelectorIndex! }));
+      if (steps.length === 0) return null;
+      return { id, name, lastRunAt: lastRun.startedAt, steps };
+    })
+    .filter((row): row is NonNullable<typeof row> => row !== null)
+    .sort((a, b) => b.lastRunAt.getTime() - a.lastRunAt.getTime());
+
+  return {
+    scenarios: drifting,
+    driftingSteps: drifting.reduce((sum, s) => sum + s.steps.length, 0),
+  };
+}
+
 statsRouter.get(
   '/',
   asyncHandler(async (_req, res) => {
@@ -63,6 +103,7 @@ statsRouter.get(
     const decided = passCount + failCount;
 
     res.json({
+      selectorDrift: await selectorDriftReport(),
       totals: {
         cases: totalCases,
         automatableCases,

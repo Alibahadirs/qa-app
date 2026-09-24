@@ -87,7 +87,8 @@ export function Dashboard() {
   if (error) return <Alert>{error}</Alert>;
   if (!data) return null;
 
-  const { totals, passRate, resultTotals, priority, execution, recentRuns } = data;
+  const { totals, passRate, resultTotals, priority, execution, recentRuns, selectorDrift } =
+    data;
 
   return (
     <div className="space-y-6">
@@ -153,6 +154,46 @@ export function Dashboard() {
           </p>
         </section>
       </div>
+
+      {selectorDrift.scenarios.length > 0 && (
+        <section className="space-y-3 rounded-lg border border-amber-300 bg-amber-50 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-sm font-semibold text-amber-900">
+              ⚠ Seçici kayması olan senaryolar
+            </h3>
+            <Link to="/scenarios" className={secondaryButton}>
+              Senaryolar
+            </Link>
+          </div>
+          <p className="text-xs text-amber-900">
+            Bu adımlarda ilk aday seçici tutmadı, yedek adayla bulundu. Senaryo geçti ama sayfa
+            değişmiş olabilir — {selectorDrift.driftingSteps} adım, son çalıştırmalarda.
+          </p>
+          <ul className="space-y-2" data-testid="dash-drift">
+            {selectorDrift.scenarios.map((scenario) => (
+              <li key={scenario.id} className="rounded-md border border-amber-200 bg-white p-3">
+                <Link
+                  to={`/scenarios/${scenario.id}`}
+                  className="text-sm font-medium text-slate-900 hover:underline"
+                >
+                  {scenario.name}
+                </Link>
+                <span className="ml-2 text-xs text-slate-500">{formatDate(scenario.lastRunAt)}</span>
+                <ul className="mt-1 space-y-0.5">
+                  {scenario.steps.map((step, i) => (
+                    <li key={i} className="text-xs text-slate-600">
+                      <code className="rounded bg-slate-100 px-1 py-0.5">{step.description}</code>
+                      <span className="ml-1.5 text-amber-800">
+                        {step.usedSelectorIndex + 1}. aday ile bulundu
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section className="space-y-3">
         <div className="flex items-center justify-between">

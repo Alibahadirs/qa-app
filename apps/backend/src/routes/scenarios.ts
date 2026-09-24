@@ -100,14 +100,20 @@ scenariosRouter.get(
   asyncHandler(async (_req, res) => {
     const rows = await prisma.scenario.findMany({
       orderBy: { updatedAt: 'desc' },
-      include: { _count: { select: { steps: true, elements: true } } },
+      include: {
+        _count: { select: { steps: true, elements: true } },
+        // Doğrulaması olmayan senaryo yalnızca "çökmedi"yi ölçer (ilke 3); listede rozetle
+        // gösterebilmek için adımların yalnızca tipini çekiyoruz.
+        steps: { select: { action: true } },
+      },
     });
 
     res.json(
-      rows.map(({ _count, ...rest }) => ({
+      rows.map(({ _count, steps, ...rest }) => ({
         ...rest,
         stepCount: _count.steps,
         elementCount: _count.elements,
+        hasAssertion: assertionWarnings(steps).length === 0,
       })),
     );
   }),
@@ -294,10 +300,28 @@ scenariosRouter.put(
     await loadScenario(scenarioId);
     const { variables } = replaceVariablesSchema.parse(req.body);
 
+    // Değeri gönderilmeyen değişkenin saklı değeri korunur (gizli değerler istemciye
+    // hiç gitmediği için arayüz onları geri yollayamaz).
+    const stored = new Map(
+      (await prisma.scenarioVariable.findMany({ where: { scenarioId } })).map((v) => [
+        v.name,
+        v.value,
+      ]),
+    );
+    const missingValue = variables.find((v) => v.value === undefined && !stored.has(v.name));
+    if (missingValue) {
+      throw new HttpError(400, `Yeni değişkenin değeri zorunlu: ${missingValue.name}`);
+    }
+
     await prisma.$transaction([
       prisma.scenarioVariable.deleteMany({ where: { scenarioId } }),
       prisma.scenarioVariable.createMany({
-        data: variables.map((v) => ({ ...v, scenarioId })),
+        data: variables.map((v) => ({
+          scenarioId,
+          name: v.name,
+          secret: v.secret,
+          value: v.value ?? stored.get(v.name)!,
+        })),
       }),
     ]);
 

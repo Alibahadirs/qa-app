@@ -227,7 +227,11 @@ export const api = {
       body: JSON.stringify({ text }),
     }),
 
-  saveScenarioVariables: (id: string, variables: { name: string; value: string; secret: boolean }[]) =>
+  /** `value` atlanan değişkenin sunucudaki değeri korunur (gizli değerler için). */
+  saveScenarioVariables: (
+    id: string,
+    variables: { name: string; value?: string; secret: boolean }[],
+  ) =>
     request<ScenarioDetail>(`/scenarios/${id}/variables`, {
       method: 'PUT',
       body: JSON.stringify({ variables }),

@@ -54,13 +54,22 @@ export const primaryButton = `${buttonClass} bg-slate-900 text-white hover:bg-sl
 export const secondaryButton = `${buttonClass} border border-slate-300 bg-white text-slate-700 hover:bg-slate-50`;
 export const dangerButton = `${buttonClass} border border-rose-200 bg-white text-rose-700 hover:bg-rose-50`;
 
-export function Alert({ kind = 'error', children }: { kind?: 'error' | 'info'; children: ReactNode }) {
-  const styles =
-    kind === 'error'
-      ? 'border-rose-200 bg-rose-50 text-rose-800'
-      : 'border-sky-200 bg-sky-50 text-sky-800';
+const ALERT_STYLES = {
+  error: 'border-rose-200 bg-rose-50 text-rose-800',
+  warning: 'border-amber-300 bg-amber-50 text-amber-900',
+  info: 'border-sky-200 bg-sky-50 text-sky-800',
+} as const;
+
+export function Alert({
+  kind = 'error',
+  children,
+}: {
+  kind?: keyof typeof ALERT_STYLES;
+  children: ReactNode;
+}) {
   return (
-    <div role="alert" className={`rounded-md border px-3 py-2 text-sm ${styles}`}>
+    <div role="alert" className={`rounded-md border px-3 py-2 text-sm ${ALERT_STYLES[kind]}`}>
+      {kind === 'warning' && <span aria-hidden className="mr-1.5">⚠</span>}
       {children}
     </div>
   );

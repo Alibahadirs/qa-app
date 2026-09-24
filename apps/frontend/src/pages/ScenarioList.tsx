@@ -127,6 +127,14 @@ export function ScenarioList() {
                 <p className="truncate text-xs text-slate-500">{scenario.baseUrl}</p>
               </div>
               <div className="flex items-center gap-4 text-xs text-slate-500">
+                {scenario.stepCount > 0 && !scenario.hasAssertion && (
+                  <span
+                    title='Doğrulama adımı yok — bu senaryo yalnızca "çökmedi"yi ölçer.'
+                    className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 font-medium text-amber-900 ring-1 ring-inset ring-amber-300"
+                  >
+                    ⚠ doğrulama yok
+                  </span>
+                )}
                 <span>{scenario.stepCount} adım</span>
                 <span>{scenario.elementCount} element</span>
                 <button

@@ -69,7 +69,11 @@ export const replaceVariablesSchema = z.object({
         .min(1)
         .max(60)
         .regex(/^[\w.-]+$/, 'Değişken adı harf, rakam, nokta, tire ve alt çizgi içerebilir'),
-      value: z.string().max(2000),
+      /**
+       * Atlanırsa aynı adla saklanan değer korunur. Gizli değerler istemciye hiç
+       * gönderilmediği için, arayüz onları geri yollamadan da kaydedebilsin diye.
+       */
+      value: z.string().max(2000).optional(),
       secret: z.boolean().default(false),
     }),
   ),

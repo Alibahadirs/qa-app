@@ -8,7 +8,7 @@ import {
   type StepAction,
   type StepResult,
 } from '../api/types.js';
-import { inputClass, secondaryButton } from './ui.js';
+import { dangerButton, inputClass, secondaryButton } from './ui.js';
 
 /**
  * Adım satırındaki alanlar yan yana durur; `inputClass` içindeki `w-full` genişlik
@@ -292,5 +292,88 @@ export function RunReport({
         );
       })}
     </ol>
+  );
+}
+
+/** Değişken editörü taslağı. Gizli değerin mevcut hâli sunucudan hiç gelmez. */
+export interface VariableDraft {
+  name: string;
+  /** null: sunucuda saklı gizli değer korunacak; string: yeni değer yazılacak. */
+  value: string | null;
+  secret: boolean;
+}
+
+/**
+ * `{{degisken}}` değerlerini düzenler. Metinde geçen ama değeri olmayan adlar
+ * kendiliğinden satır olarak açılır — senaryo çalıştırılamadan önce görünür olsun diye.
+ */
+export function VariableEditor({
+  usedNames,
+  variables,
+  onChange,
+}: {
+  usedNames: string[];
+  variables: VariableDraft[];
+  onChange: (next: VariableDraft[]) => void;
+}) {
+  const update = (index: number, patch: Partial<VariableDraft>) =>
+    onChange(variables.map((v, i) => (i === index ? { ...v, ...patch } : v)));
+
+  return (
+    <div className="space-y-2">
+      {variables.length === 0 && (
+        <p className="text-sm text-slate-500">Henüz değişken yok.</p>
+      )}
+
+      {variables.map((variable, index) => {
+        const unused = variable.name !== '' && !usedNames.includes(variable.name);
+        return (
+          <div key={index} className="flex flex-wrap items-center gap-2">
+            <input
+              type="text"
+              value={variable.name}
+              onChange={(e) => update(index, { name: e.target.value })}
+              placeholder="sifre"
+              aria-label={`Değişken ${index + 1} adı`}
+              className={`${cellClass} w-44 font-mono text-xs`}
+            />
+            <input
+              type={variable.secret ? 'password' : 'text'}
+              value={variable.value ?? ''}
+              onChange={(e) => update(index, { value: e.target.value })}
+              placeholder={variable.value === null ? 'gizli değer saklı — değiştirmek için yazın' : 'değer'}
+              aria-label={`Değişken ${index + 1} değeri`}
+              className={`${cellClass} w-72`}
+            />
+            <label className="flex items-center gap-1.5 text-xs text-slate-600">
+              <input
+                type="checkbox"
+                checked={variable.secret}
+                onChange={(e) => update(index, { secret: e.target.checked })}
+              />
+              gizli
+            </label>
+            {unused && (
+              <span className="text-xs text-slate-400">senaryo metninde kullanılmıyor</span>
+            )}
+            <button
+              type="button"
+              onClick={() => onChange(variables.filter((_, i) => i !== index))}
+              className={dangerButton}
+            >
+              Sil
+            </button>
+          </div>
+        );
+      })}
+
+      <button
+        type="button"
+        onClick={() => onChange([...variables, { name: '', value: '', secret: false }])}
+        className={secondaryButton}
+      >
+        + Değişken ekle
+      </button>
+    </div>
   );
 }

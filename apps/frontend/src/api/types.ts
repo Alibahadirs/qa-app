@@ -142,6 +142,16 @@ export interface Stats {
     counts: ResultCounts;
     total: number;
   }[];
+  /** Son çalıştırmalarında ilk aday seçicinin tutmadığı senaryolar. */
+  selectorDrift: {
+    driftingSteps: number;
+    scenarios: {
+      id: string;
+      name: string;
+      lastRunAt: string;
+      steps: { description: string; usedSelectorIndex: number }[];
+    }[];
+  };
 }
 
 /* ---- Faz 7: kodsuz senaryo otomasyonu ---- */
@@ -216,6 +226,8 @@ export interface ScenarioSummary {
   updatedAt: string;
   stepCount: number;
   elementCount: number;
+  /** En az bir doğrulama adımı var mı? Yoksa senaryo yalnızca "çökmedi"yi ölçer. */
+  hasAssertion: boolean;
 }
 
 export interface ScenarioDetail {

@@ -8,7 +8,14 @@ import type {
   ScenarioStepInput,
   TestCase,
 } from '../api/types.js';
-import { RunReport, Section, StatusChip, StepEditor } from '../components/scenarioUi.js';
+import {
+  RunReport,
+  Section,
+  StatusChip,
+  StepEditor,
+  VariableEditor,
+  type VariableDraft,
+} from '../components/scenarioUi.js';
 import {
   Alert,
   EmptyState,
@@ -52,8 +59,9 @@ export function ScenarioDetailPage() {
   const [steps, setSteps] = useState<ScenarioStepInput[]>([]);
   const [text, setText] = useState('');
   const [issues, setIssues] = useState<ParseIssue[]>([]);
+  const [variables, setVariables] = useState<VariableDraft[]>([]);
   const [message, setMessage] = useState<string | null>(null);
-  const [busy, setBusy] = useState<null | 'save' | 'run' | 'discover'>(null);
+  const [busy, setBusy] = useState<null | 'save' | 'run' | 'discover' | 'variables'>(null);
   const [discoverUrl, setDiscoverUrl] = useState('');
   const [report, setReport] = useState<ScenarioRunDetail | null>(null);
 
@@ -63,6 +71,18 @@ export function ScenarioDetailPage() {
     setSteps(toInput(data));
     setText(data.text);
     setDiscoverUrl((current) => current || data.baseUrl);
+
+    // Saklı değişkenler + metinde geçip değeri olmayan adlar. Gizli değerler sunucudan
+    // gelmediği için null tutulur: kaydederken gönderilmez, sunucudaki değer korunur.
+    const stored = data.variables.map<VariableDraft>((v) => ({
+      name: v.name,
+      value: v.secret ? null : (v.value ?? ''),
+      secret: v.secret,
+    }));
+    const missing = data.usedVariables
+      .filter((name) => !data.variables.some((v) => v.name === name))
+      .map<VariableDraft>((name) => ({ name, value: '', secret: false }));
+    setVariables([...stored, ...missing]);
   }, [data]);
 
   if (loading) return <Spinner />;
@@ -92,6 +112,31 @@ export function ScenarioDetailPage() {
       );
     } catch (err) {
       fail(err, 'Kaydedilemedi');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const saveVariables = async () => {
+    setBusy('variables');
+    setMessage(null);
+    try {
+      apply(
+        await api.saveScenarioVariables(
+          id,
+          // value null ise alan hiç gönderilmez; sunucu saklı değeri korur.
+          variables
+            .filter((v) => v.name.trim() !== '')
+            .map(({ name, value, secret }) => ({
+              name: name.trim(),
+              secret,
+              ...(value === null ? {} : { value }),
+            })),
+        ),
+        'Değişkenler kaydedildi.',
+      );
+    } catch (err) {
+      fail(err, 'Değişkenler kaydedilemedi');
     } finally {
       setBusy(null);
     }
@@ -174,7 +219,7 @@ export function ScenarioDetailPage() {
       )}
 
       {data.warnings.map((warning) => (
-        <Alert key={warning} kind="info">
+        <Alert key={warning} kind="warning">
           {warning}
         </Alert>
       ))}
@@ -323,28 +368,27 @@ export function ScenarioDetailPage() {
         </select>
       </Section>
 
-      {data.usedVariables.length > 0 && (
+      {(data.usedVariables.length > 0 || data.variables.length > 0) && (
         <Section
           title="Değişkenler"
-          description="Senaryo metninde geçen {{degisken}} adları. Gizli değerler sunucuda tutulur, yanıtlarda gösterilmez."
+          description="Senaryo metninde geçen {{degisken}} değerleri. Gizli işaretlenenler sunucuda tutulur, yanıtlarda geri gönderilmez."
+          actions={
+            <button
+              type="button"
+              onClick={() => void saveVariables()}
+              disabled={busy !== null}
+              className={primaryButton}
+              data-testid="save-variables"
+            >
+              {busy === 'variables' ? 'Kaydediliyor…' : 'Değişkenleri kaydet'}
+            </button>
+          }
         >
-          <ul className="space-y-1 text-sm">
-            {data.usedVariables.map((name) => {
-              const stored = data.variables.find((v) => v.name === name);
-              return (
-                <li key={name} className="flex items-center gap-2">
-                  <code className="rounded bg-slate-100 px-1.5 py-0.5 text-xs">{`{{${name}}}`}</code>
-                  {stored ? (
-                    <span className="text-xs text-slate-500">
-                      {stored.secret ? 'gizli değer tanımlı' : `değer: ${stored.value ?? ''}`}
-                    </span>
-                  ) : (
-                    <span className="text-xs text-rose-700">değer tanımlı değil</span>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
+          <VariableEditor
+            usedNames={data.usedVariables}
+            variables={variables}
+            onChange={setVariables}
+          />
         </Section>
       )}
 

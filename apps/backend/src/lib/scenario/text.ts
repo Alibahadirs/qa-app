@@ -115,7 +115,12 @@ export function parseScenarioText(text: string, elements: ElementRef[]): ParseRe
     const matches = elements.filter((e) => e.label === label);
     if (matches.length === 1) return matches[0]!.id;
     if (matches.length === 0) {
-      errors.push({ line, message: `Katalogda böyle bir element yok: "${label}"` });
+      // Element başka bir sayfada olabilir: çalıştırıcı sayfaları sürekli keşfeder ama
+      // ayrıştırıcı yalnızca kataloğu bilir. Kullanıcıya çıkış yolunu söylüyoruz.
+      errors.push({
+        line,
+        message: `Katalogda böyle bir element yok: "${label}" — elementin bulunduğu adresi "Sayfayı tara" ile kataloglayın.`,
+      });
     } else {
       errors.push({
         line,
