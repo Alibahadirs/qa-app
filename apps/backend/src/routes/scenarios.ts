@@ -109,15 +109,24 @@ scenariosRouter.get(
         // Doğrulaması olmayan senaryo yalnızca "çökmedi"yi ölçer (ilke 3); listede rozetle
         // gösterebilmek için adımların yalnızca tipini çekiyoruz.
         steps: { select: { action: true } },
+        // Faz 8D: listede "bu senaryo en son ne yaptı, ne zaman koşacak" görünsün.
+        runs: {
+          orderBy: { startedAt: 'desc' },
+          take: 1,
+          select: { status: true, startedAt: true, browser: true, trigger: true },
+        },
+        schedule: true,
       },
     });
 
     res.json(
-      rows.map(({ _count, steps, ...rest }) => ({
+      rows.map(({ _count, steps, runs, schedule, ...rest }) => ({
         ...rest,
         stepCount: _count.steps,
         elementCount: _count.elements,
         hasAssertion: assertionWarnings(steps).length === 0,
+        lastRun: runs[0] ?? null,
+        schedule,
       })),
     );
   }),

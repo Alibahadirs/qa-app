@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom';
 import { api } from '../api/client.js';
 import {
+  BROWSER_LABELS,
   PRIORITY_LABELS,
+  RESULT_LABELS,
   type Priority,
   type Stats,
 } from '../api/types.js';
@@ -87,7 +89,7 @@ export function Dashboard() {
   if (error) return <Alert>{error}</Alert>;
   if (!data) return null;
 
-  const { totals, passRate, resultTotals, priority, execution, recentRuns, selectorDrift } =
+  const { totals, passRate, resultTotals, priority, execution, recentRuns, selectorDrift, scenarioHealth } =
     data;
 
   return (
@@ -154,6 +156,57 @@ export function Dashboard() {
           </p>
         </section>
       </div>
+
+      <section className="space-y-3 rounded-lg border border-slate-200 bg-white p-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 className="text-sm font-semibold text-slate-700">Senaryo sağlığı</h3>
+            <p className="text-xs text-slate-500">
+              {scenarioHealth.totals.scenarios} senaryo · {scenarioHealth.totals.scheduled}{' '}
+              zamanlanmış · son 24 saatte {scenarioHealth.totals.ranLast24h} koşu
+              {scenarioHealth.totals.neverRun > 0 &&
+                ` · ${scenarioHealth.totals.neverRun} hiç çalıştırılmamış`}
+            </p>
+          </div>
+          <Link to="/scenarios/schedules" className={secondaryButton}>
+            Zamanlanmış koşular
+          </Link>
+        </div>
+
+        {scenarioHealth.failing.length === 0 ? (
+          <p className="text-sm text-slate-500">
+            Son koşusu başarısız olan senaryo yok.
+          </p>
+        ) : (
+          <ul className="space-y-2" data-testid="dash-failing">
+            {scenarioHealth.failing.map((s) => (
+              <li key={s.id} className="rounded-md border border-rose-200 bg-rose-50 p-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Link
+                    to={`/scenarios/${s.id}`}
+                    className="text-sm font-medium text-slate-900 hover:underline"
+                  >
+                    {s.name}
+                  </Link>
+                  <span className="rounded-full bg-rose-100 px-2 py-0.5 text-xs text-rose-800">
+                    {RESULT_LABELS[s.status]}
+                  </span>
+                  <span className="text-xs text-slate-500">
+                    {formatDate(s.lastRunAt)} · {BROWSER_LABELS[s.browser]}
+                    {s.trigger === 'SCHEDULED' && ' · zamanlanmış'}
+                  </span>
+                </div>
+                {s.failedStep && (
+                  <p className="mt-1 text-xs text-slate-600">
+                    <code className="rounded bg-white px-1 py-0.5">{s.failedStep}</code>
+                  </p>
+                )}
+                {s.error && <p className="mt-1 text-xs text-rose-800">{s.error}</p>}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       {selectorDrift.scenarios.length > 0 && (
         <section className="space-y-3 rounded-lg border border-amber-300 bg-amber-50 p-5">

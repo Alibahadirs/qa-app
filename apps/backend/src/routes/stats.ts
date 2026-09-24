@@ -8,6 +8,91 @@ const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] as const;
 const RESULT_KEYS = ['PASS', 'FAIL', 'BLOCKED', 'SKIPPED', 'NOT_RUN'] as const;
 
 /**
+ * Faz 8D — senaryo sağlığı.
+ *
+ * Zamanlanmış koşular arka planda çalıştığı için kimse bakmadan da düşebilirler.
+ * Burası "gece ne oldu, bu gece ne koşacak" sorusunun tek cevap yeri: son koşusu
+ * başarısız olan senaryolar ve sıradaki zamanlamalar.
+ */
+async function scenarioHealthReport(now: Date) {
+  const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+  const [scenarios, scheduleRows, ranLast24h] = await Promise.all([
+    prisma.scenario.findMany({
+      select: {
+        id: true,
+        name: true,
+        runs: {
+          orderBy: { startedAt: 'desc' },
+          take: 1,
+          select: {
+            status: true,
+            startedAt: true,
+            browser: true,
+            trigger: true,
+            error: true,
+            steps: {
+              where: { status: { in: ['FAIL', 'BLOCKED'] } },
+              orderBy: { order: 'asc' },
+              take: 1,
+              select: { description: true, error: true },
+            },
+          },
+        },
+      },
+    }),
+    prisma.scenarioSchedule.findMany({
+      where: { enabled: true },
+      orderBy: { nextRunAt: 'asc' },
+      include: { scenario: { select: { id: true, name: true } } },
+    }),
+    prisma.scenarioRun.count({ where: { startedAt: { gte: dayAgo } } }),
+  ]);
+
+  // "Başarısız" = son koşu FAIL ya da BLOCKED. Hiç koşmamış senaryo başarısız sayılmaz;
+  // ayrı bir durumdur ve sayıda görünür.
+  const failing = scenarios
+    .map(({ id, name, runs }) => {
+      const last = runs[0];
+      if (!last || (last.status !== 'FAIL' && last.status !== 'BLOCKED')) return null;
+      const step = last.steps[0];
+      return {
+        id,
+        name,
+        status: last.status,
+        lastRunAt: last.startedAt,
+        browser: last.browser,
+        trigger: last.trigger,
+        // Nerede düştüğü: adım varsa adım, yoksa koşu düzeyindeki hata.
+        failedStep: step?.description ?? null,
+        error: step?.error ?? last.error,
+      };
+    })
+    .filter((row): row is NonNullable<typeof row> => row !== null)
+    .sort((a, b) => b.lastRunAt.getTime() - a.lastRunAt.getTime());
+
+  return {
+    totals: {
+      scenarios: scenarios.length,
+      scheduled: scheduleRows.length,
+      neverRun: scenarios.filter((s) => s.runs.length === 0).length,
+      ranLast24h,
+    },
+    failing,
+    upcoming: scheduleRows.map((s) => ({
+      scenarioId: s.scenario.id,
+      scenarioName: s.scenario.name,
+      kind: s.kind,
+      intervalMinutes: s.intervalMinutes,
+      dailyAt: s.dailyAt,
+      browser: s.browser,
+      nextRunAt: s.nextRunAt,
+      lastRunAt: s.lastRunAt,
+    })),
+  };
+}
+
+/**
  * Seçici kayması toplu raporu: her senaryonun **son** çalıştırmasına bakılır ve ilk aday
  * dışında bir adayla bulunan adımlar toplanır. Kayma, sayfanın değiştiğinin erken
  * habercisidir; tek bir rapora gömülü kalmasın diye dashboard'a taşınır.
@@ -104,6 +189,7 @@ statsRouter.get(
 
     res.json({
       selectorDrift: await selectorDriftReport(),
+      scenarioHealth: await scenarioHealthReport(new Date()),
       totals: {
         cases: totalCases,
         automatableCases,

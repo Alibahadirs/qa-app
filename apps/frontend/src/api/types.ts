@@ -142,6 +142,7 @@ export interface Stats {
     counts: ResultCounts;
     total: number;
   }[];
+  scenarioHealth: ScenarioHealth;
   /** Son çalıştırmalarında ilk aday seçicinin tutmadığı senaryolar. */
   selectorDrift: {
     driftingSteps: number;
@@ -228,6 +229,8 @@ export interface ScenarioSummary {
   elementCount: number;
   /** En az bir doğrulama adımı var mı? Yoksa senaryo yalnızca "çökmedi"yi ölçer. */
   hasAssertion: boolean;
+  lastRun: LastRunSummary | null;
+  schedule: ScenarioSchedule | null;
 }
 
 export interface ScenarioDetail {
@@ -377,3 +380,45 @@ export const BROWSER_LABELS: Record<BrowserName, string> = {
   FIREFOX: 'Firefox',
   WEBKIT: 'WebKit',
 };
+
+/* ---- Faz 8D: senaryo sağlığı ---- */
+
+/** Senaryo listesinde ve sağlık kartında kullanılan son koşu özeti. */
+export interface LastRunSummary {
+  status: ResultStatus;
+  startedAt: string;
+  browser: BrowserName;
+  trigger: RunTrigger;
+}
+
+export interface ScenarioHealth {
+  totals: {
+    scenarios: number;
+    scheduled: number;
+    /** Hiç çalıştırılmamış senaryolar — başarısız değil, ayrı bir durum. */
+    neverRun: number;
+    ranLast24h: number;
+  };
+  /** Son koşusu FAIL ya da BLOCKED olan senaryolar, yeniden eskiye. */
+  failing: {
+    id: string;
+    name: string;
+    status: ResultStatus;
+    lastRunAt: string;
+    browser: BrowserName;
+    trigger: RunTrigger;
+    failedStep: string | null;
+    error: string | null;
+  }[];
+  /** Açık zamanlamalar, sıradaki çalıştırma zamanına göre sıralı. */
+  upcoming: {
+    scenarioId: string;
+    scenarioName: string;
+    kind: ScheduleKind;
+    intervalMinutes: number | null;
+    dailyAt: string | null;
+    browser: BrowserName;
+    nextRunAt: string;
+    lastRunAt: string | null;
+  }[];
+}

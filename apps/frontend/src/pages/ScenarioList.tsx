@@ -1,7 +1,8 @@
 import { type FormEvent, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client.js';
-import type { ScenarioSummary } from '../api/types.js';
+import { BROWSER_LABELS, type ScenarioSummary } from '../api/types.js';
+import { StatusChip, describeSchedule } from '../components/scenarioUi.js';
 import {
   Alert,
   EmptyState,
@@ -125,6 +126,25 @@ export function ScenarioList() {
                   {scenario.name}
                 </Link>
                 <p className="truncate text-xs text-slate-500">{scenario.baseUrl}</p>
+                <p className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                  {scenario.lastRun ? (
+                    <>
+                      <StatusChip status={scenario.lastRun.status} />
+                      <span>
+                        {new Date(scenario.lastRun.startedAt).toLocaleString('tr-TR')} ·{' '}
+                        {BROWSER_LABELS[scenario.lastRun.browser]}
+                        {scenario.lastRun.trigger === 'SCHEDULED' && ' · zamanlanmış'}
+                      </span>
+                    </>
+                  ) : (
+                    <span>henüz çalıştırılmadı</span>
+                  )}
+                  {scenario.schedule && (
+                    <span className="rounded bg-slate-100 px-1.5 py-0.5">
+                      ⏱ {describeSchedule(scenario.schedule)}
+                    </span>
+                  )}
+                </p>
               </div>
               <div className="flex items-center gap-4 text-xs text-slate-500">
                 {scenario.stepCount > 0 && !scenario.hasAssertion && (
