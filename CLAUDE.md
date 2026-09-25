@@ -202,6 +202,9 @@ Yeni bir özellik eklerken buraya da test yazılır.
 - `helpers.ts` — senaryo kurma/tarama/metin yazma/çalıştırma + API'den temizlik.
   Her spec kendi verisini `afterAll`'da siler.
 - `globalSetup.ts` — auth açıkken bir kez giriş yapıp oturumu saklar.
+- `apps/e2e/tests/core/` — çekirdek modüller: manuel run arayüz akışı, dar ekran taşması
+  ve veri bütünlüğü/güvenlik regresyonları (geçmişi olan case/suite silinemez — 409,
+  yükleme uzantısı mimetype'tan + imza kontrolü, CSV formül nötrleme, Türkçe arama).
 - Backend tarafında `apps/backend/src/scripts/verify*.ts` betikleri gerçek tarayıcı ve
   gerçek veritabanıyla çalışır (`pnpm --filter @qa-app/backend test`).
 
