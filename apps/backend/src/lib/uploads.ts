@@ -1,13 +1,24 @@
 import { randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync } from 'node:fs';
-import { extname, resolve } from 'node:path';
+import { open } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import multer from 'multer';
 import { HttpError } from './errors.js';
 
 export const UPLOAD_DIR = resolve(import.meta.dirname, '../../uploads');
 export const UPLOAD_ROUTE = '/uploads';
 
-const ALLOWED = new Set(['image/png', 'image/jpeg', 'image/webp']);
+/**
+ * İzin verilen türler ve dosya uzantıları. Uzantı istemcinin gönderdiği addan
+ * ALINMAZ: `x.html` + `image/png` beyanı diske .html yazıp statik sunucudan
+ * text/html olarak döner ve uygulama origin'inde script çalıştırırdı.
+ */
+const EXTENSIONS: Record<string, string> = {
+  'image/png': '.png',
+  'image/jpeg': '.jpg',
+  'image/webp': '.webp',
+};
+const ALLOWED = new Set(Object.keys(EXTENSIONS));
 const MAX_BYTES = 5 * 1024 * 1024;
 
 if (!existsSync(UPLOAD_DIR)) mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -17,7 +28,7 @@ const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, UPLOAD_DIR),
   filename: (req, file, cb) => {
     const safe = (v: unknown) => String(v ?? 'x').replace(/[^A-Za-z0-9_-]/g, '');
-    const ext = extname(file.originalname).toLowerCase().slice(0, 8) || '.png';
+    const ext = EXTENSIONS[file.mimetype] ?? '.bin';
     const id = randomBytes(6).toString('hex');
     cb(null, `${safe(req.params.id)}-${safe(req.params.caseId)}-${id}${ext}`);
   },
@@ -34,6 +45,25 @@ export const screenshotUpload = multer({
     cb(null, true);
   },
 }).single('screenshot');
+
+/**
+ * Beyan edilen mimetype istemcinin iddiasıdır; dosyanın ilk baytları gerçekten
+ * PNG/JPEG/WebP imzası taşıyor mu diye bakar.
+ */
+export async function hasImageSignature(path: string): Promise<boolean> {
+  const handle = await open(path, 'r');
+  try {
+    const buf = Buffer.alloc(12);
+    const { bytesRead } = await handle.read(buf, 0, 12, 0);
+    const head = buf.subarray(0, bytesRead);
+    const png = head.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+    const jpeg = head[0] === 0xff && head[1] === 0xd8 && head[2] === 0xff;
+    const webp = head.toString('latin1', 0, 4) === 'RIFF' && head.toString('latin1', 8, 12) === 'WEBP';
+    return png || jpeg || webp;
+  } finally {
+    await handle.close();
+  }
+}
 
 /** multer'ın kendi hatalarını HttpError'a çevirir. */
 export function toUploadError(err: unknown): HttpError {

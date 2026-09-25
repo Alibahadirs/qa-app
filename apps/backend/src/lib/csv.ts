@@ -1,7 +1,12 @@
-/** RFC 4180'e göre tek hücre kaçışı. */
+/**
+ * RFC 4180'e göre tek hücre kaçışı. Excel/Sheets `= + - @` (ve sekme/CR) ile
+ * başlayan hücreyi formül sayar; kullanıcı girdisi (not, başlık) bu yolla
+ * çalıştırılabilir bir formüle dönüşmesin diye başına `'` eklenir.
+ */
 function cell(value: unknown): string {
   if (value === null || value === undefined) return '';
-  const s = String(value);
+  let s = String(value);
+  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
   return /[",\n\r;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 

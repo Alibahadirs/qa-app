@@ -7,7 +7,13 @@ import { csvFilename, toCsv } from '../lib/csv.js';
 import { parseStringArray } from '../lib/json.js';
 import { resolveScriptPath, runPlaywrightSpec } from '../lib/playwright.js';
 import { runScenario } from '../lib/scenario/runner.js';
-import { UPLOAD_DIR, UPLOAD_ROUTE, screenshotUpload, toUploadError } from '../lib/uploads.js';
+import {
+  UPLOAD_DIR,
+  UPLOAD_ROUTE,
+  hasImageSignature,
+  screenshotUpload,
+  toUploadError,
+} from '../lib/uploads.js';
 import {
   createTestRunSchema,
   updateResultSchema,
@@ -341,6 +347,11 @@ async function handleScreenshotUpload(req: Request, res: Response) {
   };
 
   if (!file) throw new HttpError(400, 'Dosya gönderilmedi (alan adı: screenshot).');
+
+  if (!(await hasImageSignature(file.path))) {
+    await cleanup();
+    throw new HttpError(400, 'Dosya içeriği PNG, JPEG veya WebP değil.');
+  }
 
   const run = await prisma.testRun.findUnique({
     where: { id },

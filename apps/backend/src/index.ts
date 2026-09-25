@@ -27,7 +27,15 @@ app.get('/health', (_req, res) => {
 app.use('/auth', authRouter);
 app.use(requireAuth);
 
-app.use(UPLOAD_ROUTE, express.static(UPLOAD_DIR, { index: false, maxAge: '1h' }));
+// nosniff: tarayıcı içerik tahminiyle bir dosyayı HTML/script olarak yorumlamasın.
+app.use(
+  UPLOAD_ROUTE,
+  express.static(UPLOAD_DIR, {
+    index: false,
+    maxAge: '1h',
+    setHeaders: (res) => res.setHeader('X-Content-Type-Options', 'nosniff'),
+  }),
+);
 
 app.use('/test-cases', testCasesRouter);
 app.use('/test-suites', testSuitesRouter);
