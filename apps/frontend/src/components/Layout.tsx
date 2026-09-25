@@ -9,12 +9,12 @@ export function Layout({ onLogout }: { onLogout?: () => void }) {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <header className="border-b border-slate-200 bg-white print:hidden">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-6 py-3">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <div>
             <h1 className="text-base font-semibold">QA App</h1>
             <p className="text-xs text-slate-500">Test Yönetim Uygulaması</p>
           </div>
-          <nav className="flex gap-1">
+          <nav className="flex flex-wrap gap-1">
             <NavLink to="/dashboard" className={linkClass}>
               Genel Bakış
             </NavLink>
@@ -47,7 +47,7 @@ export function Layout({ onLogout }: { onLogout?: () => void }) {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-6 py-8">
+      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
         <Outlet />
       </main>
     </div>

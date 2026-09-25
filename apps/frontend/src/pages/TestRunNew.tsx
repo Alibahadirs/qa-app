@@ -1,5 +1,5 @@
 import { type FormEvent, useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client.js';
 import type { TestSuiteSummary } from '../api/types.js';
 import {
@@ -20,6 +20,7 @@ export function TestRunNew() {
     [],
   );
 
+  const [searchParams] = useSearchParams();
   const [suiteId, setSuiteId] = useState('');
   const [name, setName] = useState('');
   const [nameTouched, setNameTouched] = useState(false);
@@ -28,6 +29,18 @@ export function TestRunNew() {
 
   const runnable = (suites ?? []).filter((s) => s.caseCount > 0);
   const selected = runnable.find((s) => s.id === suiteId);
+
+  // Ön seçim: ?suiteId= ile gelindiyse o suite, tek seçenek varsa o seçilir.
+  // Seçimsiz butonun pasif kalması "tepki vermiyor" gibi görünüyordu.
+  // Yalnız suite'ler yüklendiğinde bir kez çalışır; kullanıcı seçimi boşaltırsa geri doldurulmaz.
+  useEffect(() => {
+    if (!suites) return;
+    const options = suites.filter((s) => s.caseCount > 0);
+    const requested = searchParams.get('suiteId');
+    const preset =
+      options.find((s) => s.id === requested) ?? (options.length === 1 ? options[0] : undefined);
+    if (preset) setSuiteId(preset.id);
+  }, [suites, searchParams]);
 
   // Kullanıcı adı elle değiştirmediği sürece suite adına göre öneri güncellenir.
   useEffect(() => {

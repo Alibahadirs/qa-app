@@ -225,9 +225,19 @@ export function TestRunDetailPage() {
           )}
         </div>
         {!editable && (
-          <p className="text-xs text-slate-500">
-            Bu run kapatıldı; sonuçlar salt okunur.
-          </p>
+          <div className="print:hidden">
+            <Alert kind="warning">
+              Bu run kapatıldı; sonuçlar salt okunur ve işaretlenemez. Yeniden test etmek için
+              yeni bir run başlatın.{' '}
+              <Link
+                to={`/test-runs/new?suiteId=${run.suite.id}`}
+                className="font-medium underline"
+                data-testid="run-restart"
+              >
+                Bu suite ile yeni run başlat →
+              </Link>
+            </Alert>
+          </div>
         )}
       </section>
 
