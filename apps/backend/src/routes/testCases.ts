@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { prisma } from '../db.js';
-import { asyncHandler, notFound } from '../lib/errors.js';
+import { HttpError, asyncHandler, notFound } from '../lib/errors.js';
 import { csvFilename, toCsv } from '../lib/csv.js';
 import { parseStringArray, serializeStringArray } from '../lib/json.js';
 import {
@@ -30,13 +30,18 @@ testCasesRouter.get(
       where: {
         ...(priority ? { priority } : {}),
         ...(isAutomatable === undefined ? {} : { isAutomatable }),
-        ...(q ? { title: { contains: q } } : {}),
       },
       orderBy: { createdAt: 'desc' },
     });
 
-    // tags JSON string olarak saklandığı için filtre uygulama katmanında yapılır.
-    const filtered = tag ? rows.filter((r) => parseStringArray(r.tags).includes(tag)) : rows;
+    // SQLite LIKE yalnız ASCII'de büyük/küçük harf duyarsız ("çıkış" ≠ "Çıkış"),
+    // bu yüzden arama da tags gibi uygulama katmanında, Türkçe yerel ayarla yapılır.
+    const needle = q?.toLocaleLowerCase('tr');
+    const filtered = rows.filter(
+      (r) =>
+        (!tag || parseStringArray(r.tags).includes(tag)) &&
+        (!needle || r.title.toLocaleLowerCase('tr').includes(needle)),
+    );
 
     res.json(filtered.map(toDto));
   }),
@@ -119,8 +124,21 @@ testCasesRouter.delete(
   '/:id',
   asyncHandler(async (req, res) => {
     const id = req.params.id as string;
-    const exists = await prisma.testCase.findUnique({ where: { id }, select: { id: true } });
-    if (!exists) throw notFound('Test case', id);
+    const row = await prisma.testCase.findUnique({
+      where: { id },
+      select: { _count: { select: { results: true } } },
+    });
+    if (!row) throw notFound('Test case', id);
+
+    // Şemadaki cascade bu case'in sonuçlarını geçmiş run'lardan da silerdi;
+    // tamamlanmış raporlar sessizce değişmesin.
+    if (row._count.results > 0) {
+      throw new HttpError(
+        409,
+        `Bu test case ${row._count.results} run sonucunda geçiyor; silinirse o run'ların ` +
+          'geçmişi değişir. Suite\'ten çıkarabilir ya da önce ilgili run\'ları silebilirsiniz.',
+      );
+    }
 
     await prisma.testCase.delete({ where: { id } });
     res.status(204).end();

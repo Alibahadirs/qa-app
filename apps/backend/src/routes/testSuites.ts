@@ -107,8 +107,20 @@ testSuitesRouter.delete(
   '/:id',
   asyncHandler(async (req, res) => {
     const id = req.params.id as string;
-    const exists = await prisma.testSuite.findUnique({ where: { id }, select: { id: true } });
-    if (!exists) throw notFound('Test suite', id);
+    const suite = await prisma.testSuite.findUnique({
+      where: { id },
+      select: { _count: { select: { runs: true } } },
+    });
+    if (!suite) throw notFound('Test suite', id);
+
+    // Şemadaki cascade run geçmişini de silerdi; geçmiş sessizce kaybolmasın.
+    if (suite._count.runs > 0) {
+      throw new HttpError(
+        409,
+        `Bu suite'e bağlı ${suite._count.runs} run var; silinirse run geçmişi de kaybolur. ` +
+          "Önce Run'lar sayfasından bu run'ları silin.",
+      );
+    }
 
     await prisma.testSuite.delete({ where: { id } });
     res.status(204).end();
@@ -183,7 +195,9 @@ testSuitesRouter.put(
 
     const currentIds = new Set(links.map((l) => l.caseId));
     const unknown = caseIds.filter((c) => !currentIds.has(c));
-    if (unknown.length > 0 || caseIds.length !== links.length) {
+    // Yinelenen id uzunluk kontrolünü atlatıp iki case'e aynı sırayı verirdi.
+    const duplicated = new Set(caseIds).size !== caseIds.length;
+    if (unknown.length > 0 || duplicated || caseIds.length !== links.length) {
       throw new HttpError(400, 'Sıralama listesi suite içeriğiyle birebir eşleşmeli', {
         expected: [...currentIds],
         received: caseIds,

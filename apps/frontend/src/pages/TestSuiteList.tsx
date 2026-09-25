@@ -47,7 +47,9 @@ export function TestSuiteList() {
   };
 
   const handleDelete = async (suite: TestSuiteSummary) => {
+    // Run geçmişi olan suite'i backend reddeder (409); mesaj formError'da gösterilir.
     if (!window.confirm(`"${suite.name}" suite'i silinsin mi? Test case'ler silinmez.`)) return;
+    setFormError(null);
     try {
       await api.deleteTestSuite(suite.id);
       reload();

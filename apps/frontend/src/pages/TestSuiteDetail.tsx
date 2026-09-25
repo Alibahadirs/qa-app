@@ -140,8 +140,15 @@ export function TestSuiteDetailPage() {
             type="button"
             disabled={busy}
             onClick={() => {
-              if (!window.confirm(`"${suite.name}" silinsin mi?`)) return;
-              void api.deleteTestSuite(id).then(() => navigate('/test-suites'));
+              if (!window.confirm(`"${suite.name}" silinsin mi? Test case'ler silinmez.`)) return;
+              // Run geçmişi varsa backend 409 döner; hata yutulmasın, gösterilsin.
+              setActionError(null);
+              api
+                .deleteTestSuite(id)
+                .then(() => navigate('/test-suites'))
+                .catch((err: unknown) =>
+                  setActionError(err instanceof Error ? err.message : 'Suite silinemedi'),
+                );
             }}
             className={dangerButton}
           >

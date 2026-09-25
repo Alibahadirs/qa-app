@@ -7,7 +7,16 @@ const description = z.string().trim().max(2000);
 const steps = z.array(z.string().trim().min(1));
 const expectedResult = z.string().trim().min(1, 'Beklenen sonuç zorunlu').max(2000);
 const priority = z.enum(PRIORITIES);
-const tags = z.array(z.string().trim().min(1));
+/** Etiketler büyük/küçük harf duyarsız tekilleştirilir; ilk yazılış korunur. */
+const tags = z.array(z.string().trim().min(1)).transform((list) => {
+  const seen = new Set<string>();
+  return list.filter((t) => {
+    const key = t.toLocaleLowerCase('tr');
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+});
 const isAutomatable = z.boolean();
 const playwrightScriptPath = z.string().trim().max(500);
 

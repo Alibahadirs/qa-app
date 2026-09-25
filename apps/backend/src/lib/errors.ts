@@ -46,6 +46,18 @@ export function errorHandler(
     return;
   }
 
+  // express.json() ayrıştırma hataları istemci hatasıdır, 500 değil.
+  if (typeof err === 'object' && err !== null && 'type' in err) {
+    if (err.type === 'entity.parse.failed') {
+      res.status(400).json({ error: 'İstek gövdesi geçerli JSON değil.' });
+      return;
+    }
+    if (err.type === 'entity.too.large') {
+      res.status(413).json({ error: 'İstek gövdesi çok büyük.' });
+      return;
+    }
+  }
+
   // Prisma "kayıt bulunamadı" hatası
   if (typeof err === 'object' && err !== null && 'code' in err && err.code === 'P2025') {
     res.status(404).json({ error: 'Kayıt bulunamadı' });
